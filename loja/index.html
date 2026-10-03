@@ -201,7 +201,7 @@ const lojaRef=()=>db.collection('marmitarias').doc(lojaId);
 function telaLogin(msg,sair){$('#carregando').style.display='none';$('#app').style.display='none';$('#login').style.display='';$('#lMsg').textContent=msg||'';$('#lSair').style.display=sair?'':'none'}
 async function entrar(){const e=$('#lEmail').value.trim(),s=$('#lSenha').value;if(!e||!s)return toast('Informe e-mail e senha');try{await auth.signInWithEmailAndPassword(e,s)}catch(err){toast(['auth/invalid-credential','auth/wrong-password','auth/user-not-found','auth/invalid-login-credentials'].includes(err.code)?'E-mail ou senha incorretos':'Erro: '+err.message)}}
 async function esqueci(){const e=$('#lEmail').value.trim();if(!e)return toast('Digite seu e-mail primeiro');try{await auth.sendPasswordResetEmail(e);toast('Enviamos um link para '+e)}catch(err){toast('Erro: '+err.message)}}
-function limpar(){unsub.forEach(f=>{try{f()}catch(e){}});unsub=[];[unsubPed,unsubPedB,unsubPedC].forEach(f=>{if(f)f()});unsubPed=unsubPedB=unsubPedC=null;pedidos=[];encomendas=[];cardapios={};cdEd=null;cdData=null;produtos=[];loja=null;estoque={};insumos=[];movs=[]}
+function limpar(){unsub.forEach(f=>{try{f()}catch(e){}});unsub=[];[unsubPed,unsubPedB,unsubPedC].forEach(f=>{if(f)f()});unsubPed=unsubPedB=unsubPedC=null;pedidos=[];encomendas=[];cardapios={};if(unsubEnt){unsubEnt();unsubEnt=null}entregadores=[];cdEd=null;cdData=null;produtos=[];loja=null;estoque={};insumos=[];movs=[]}
 
 auth.onAuthStateChanged(async u=>{
   limpar();user=u;perfil=null;lojaId=null;
@@ -209,6 +209,7 @@ auth.onAuthStateChanged(async u=>{
   const email=(u.email||'').toLowerCase();isSuper=email===SUPER_ADMIN;
   try{const s=await db.collection(USERS).doc(email).get();if(s.exists)perfil=s.data()}catch(e){console.error(e)}
   if(!perfil&&!isSuper)return telaLogin('Este login ('+u.email+') não está vinculado a nenhuma marmitaria.',true);
+  if(perfil&&perfil.papel==='entregador'&&!isSuper){location.href=baseApp()+'entrega/';return}
   $('#login').style.display='none';$('#carregando').style.display='none';$('#app').style.display='';
   $('#navAdmin').style.display=isSuper?'':'none';
   const pm=(new URLSearchParams(location.search).get('m')||'').trim();
@@ -231,6 +232,7 @@ function abrirLoja(id){
     if(tabAtual==='cardapio'&&cdAba==='dia'&&!(cdEd&&cdEd.mexido)){cdEd=null;renderDia()}
     checarProducao();
   },e=>console.error(e)));
+  ouvirEntregadores();
   diaPedidos=hojeStr();ouvirPedidos();irTab('pedidos');
 }
 function renderTopo(){
@@ -305,14 +307,15 @@ function renderPedidos(){
   const at=['novo','preparo','saiu'],cont={ativos:0};
   pedidos.forEach(p=>{cont[p.status]=(cont[p.status]||0)+1;if(at.includes(p.status))cont.ativos++});
   if(filtro==='enc'&&diaPedidos!==hojeStr())filtro='ativos';
-  const encAb=encomendas.filter(p=>p.status!=='cancelado');cont.enc=encAb.length;
-  const lista=filtro==='enc'?encomendas:pedidos.filter(p=>filtro==='todos'||(filtro==='ativos'?at.includes(p.status):p.status===filtro));
+  const encAb=encomendas.filter(p=>p.status!=='cancelado');cont.enc=encAb.length;cont.rua=pedidos.filter(p=>p.entregaAberta).length;
+  const lista=filtro==='rua'?[]:filtro==='enc'?encomendas:pedidos.filter(p=>filtro==='todos'||(filtro==='ativos'?at.includes(p.status):p.status===filtro));
   const fat=pedidos.filter(p=>p.status!=='cancelado').reduce((s,p)=>s+(+p.total||0),0);
   el.innerHTML=`${avisos()}${avisoEstoque()}${loja&&!loja.aberto&&diaPedidos===hojeStr()?'<div class="card" style="background:#fff5f5;border-color:#ffc9c9"><b>🔒 A loja está FECHADA.</b> <span class="mut sm">Ligue a chave no topo para receber pedidos.</span></div>':''}
   ${!somOn?'<div class="card" style="background:#fff9db;border-color:#ffe066" onclick="toggleSom()"><b>🔔 Toque aqui para ligar o som de novos pedidos</b></div>':''}
   <div class="bar1"><input type="date" value="${diaPedidos}" onchange="diaPedidos=this.value;ouvirPedidos()"><div class="mut sm" style="text-align:right">${pedidos.length} pedido(s)<br><b>${brl(fat)}</b></div></div>
-  <div class="chips">${[['ativos','Em aberto'],...(diaPedidos===hojeStr()?[['enc','📅 Encomendas']]:[]),['novo','Novos'],['preparo','Preparo'],['saiu','Saiu/Pronto'],['entregue','Entregues'],['cancelado','Cancelados'],['todos','Todos']].map(([k,l])=>`<button class="chip ${filtro===k?'on':''}" onclick="filtro='${k}';renderPedidos()">${l}${k!=='todos'&&cont[k]?` <b>${cont[k]}</b>`:''}</button>`).join('')}</div>
-  ${filtro==='enc'?'<p class="mut sm" style="margin-bottom:8px">Encomendas para os próximos dias. O estoque delas baixa quando a produção do dia for lançada (ao publicar o cardápio daquele dia com as quantidades).</p>':''}${lista.length?lista.map(cardPedido).join(''):'<p class="vazio">'+(filtro==='enc'?'Nenhuma encomenda para os próximos dias.':'Nenhum pedido aqui.')+'</p>'}`;
+  <div class="chips">${[['ativos','Em aberto'],['rua','🛵 Entregadores'],...(diaPedidos===hojeStr()?[['enc','📅 Encomendas']]:[]),['novo','Novos'],['preparo','Preparo'],['saiu','Saiu/Pronto'],['entregue','Entregues'],['cancelado','Cancelados'],['todos','Todos']].map(([k,l])=>`<button class="chip ${filtro===k?'on':''}" onclick="filtro='${k}';renderPedidos()">${l}${k!=='todos'&&cont[k]?` <b>${cont[k]}</b>`:''}</button>`).join('')}</div>
+  ${filtro==='rua'?'<div id="naRua"></div>':''}${filtro==='rua'?'':filtro==='enc'?'<p class="mut sm" style="margin-bottom:8px">Encomendas para os próximos dias. O estoque delas baixa quando a produção do dia for lançada (ao publicar o cardápio daquele dia com as quantidades).</p>':''}${filtro==='rua'?'':lista.length?lista.map(cardPedido).join(''):'<p class="vazio">'+(filtro==='enc'?'Nenhuma encomenda para os próximos dias.':'Nenhum pedido aqui.')+'</p>'}`;
+  if(filtro==='rua')renderNaRua($('#naRua'));
 }
 function cardPedido(p){
   const c=p.cliente||{},pg=p.pagamento||{};
@@ -326,7 +329,8 @@ function cardPedido(p){
   <div class="pct"><span>${FORMAS[pg.forma]||''}${pg.trocoPara?` · troco p/ ${brl(pg.trocoPara)} <b style="font-size:13px">(levar ${brl(pg.trocoPara-p.total)})</b>`:''}</span><b>${brl(p.total)}</b></div>
   ${p.tipo==='entrega'?`<div class="mut sm">Itens ${brl(p.subtotal)} + entrega ${brl(p.taxa)}</div>`:''}
   ${p.status==='cancelado'?`<div class="mut sm">${p.canceladoPor==='cliente'?'Cancelado pelo cliente':'Cancelado pela loja'}${p.motivoCancel?': '+esc(p.motivoCancel):''}</div>`:''}
-  <div class="pca">${prox.map(([s,l])=>`<button class="btn pri" onclick="mudarStatus('${p.id}','${s}')">${l}</button>`).join('')}
+  ${p.tipo==='entrega'&&p.entregador&&['entregue','cancelado'].includes(p.status)?botaoEntregador(p):''}
+  <div class="pca">${prox.map(([s,l])=>`<button class="btn pri" onclick="mudarStatus('${p.id}','${s}')">${l}</button>`).join('')}${['entregue','cancelado'].includes(p.status)?'':botaoEntregador(p)}
     ${!['cancelado','entregue'].includes(p.status)?`<button class="btn danger" onclick="cancelarPed('${p.id}')">Cancelar</button>`:''}
     <button class="btn" onclick="togglePago('${p.id}')">${p.pago?'↩️ Não pago':'💲 Pago'}</button>
     <a class="btn" target="_blank" href="${waCliente(p)}">💬</a>
@@ -344,18 +348,19 @@ async function mudarStatus(id,s){
   const p=achar(id);
   try{
     const b=db.batch(),upd={status:s,['statusMs.'+s]:Date.now()};
+    if(s==='entregue'&&p&&p.entregaAberta){upd.entregaAberta=false;upd.entregueMs=Date.now()}
     if(p&&s!=='cancelado'&&!p.estoqueBaixado&&!(p.paraData&&p.paraData>hojeStr())&&movimentarEstoque(b,p,-1))upd.estoqueBaixado=true;
     b.update(lojaRef().collection('pedidos').doc(id),upd);await b.commit();
   }catch(e){toast('Erro: '+e.message)}
 }
-async function cancelarPed(id){const m=prompt('Cancelar o pedido? Motivo (opcional):');if(m===null)return;const p=achar(id);try{const b=db.batch(),upd={status:'cancelado','statusMs.cancelado':Date.now(),motivoCancel:m.trim(),canceladoPor:'loja'};if(p&&p.estoqueBaixado){movimentarEstoque(b,p,1);upd.estoqueBaixado=false}b.update(lojaRef().collection('pedidos').doc(id),upd);await b.commit()}catch(e){toast('Erro: '+e.message)}}
+async function cancelarPed(id){const m=prompt('Cancelar o pedido? Motivo (opcional):');if(m===null)return;const p=achar(id);try{const b=db.batch(),upd={status:'cancelado','statusMs.cancelado':Date.now(),motivoCancel:m.trim(),canceladoPor:'loja',entregaAberta:false};if(p&&p.estoqueBaixado){movimentarEstoque(b,p,1);upd.estoqueBaixado=false}b.update(lojaRef().collection('pedidos').doc(id),upd);await b.commit()}catch(e){toast('Erro: '+e.message)}}
 async function togglePago(id){const p=achar(id);try{await lojaRef().collection('pedidos').doc(id).update({pago:!p.pago})}catch(e){toast('Erro: '+e.message)}}
 function imprimir(id){
   const p=achar(id),c=p.cliente||{},pg=p.pagamento||{};
   const w=window.open('','_blank','width=380,height=640');if(!w)return toast('Permita pop-ups para imprimir');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pedido ${p.numero}</title><style>body{font-family:monospace;width:58mm;font-size:12px;margin:0;padding:4px}h1{font-size:18px;text-align:center;margin:4px 0}h2{font-size:13px;text-align:center;margin:0}hr{border:0;border-top:1px dashed #000;margin:6px 0}.r{display:flex;justify-content:space-between;gap:6px}small{font-size:11px}@page{margin:0}</style></head><body>
   <h2>${esc(loja.nome)}</h2><h1>PEDIDO #${p.numero}</h1>${p.encomenda?`<div style="text-align:center"><b>ENCOMENDA PARA ${p.paraData.split('-').reverse().join('/')}</b></div>`:''}<div style="text-align:center">${new Date(p.criadoMs).toLocaleString('pt-BR')}</div><hr>
-  <b>${p.tipo==='entrega'?'ENTREGA':'RETIRADA'}</b><br>${esc(c.nome)} – ${fmtTel(c.tel)}${p.tipo==='entrega'?'<br>'+esc(endTxt(c)):''}<hr>
+  <b>${p.tipo==='entrega'?'ENTREGA':'RETIRADA'}</b>${p.entregador?' · '+esc(p.entregador.nome):''}<br>${esc(c.nome)} – ${fmtTel(c.tel)}${p.tipo==='entrega'?'<br>'+esc(endTxt(c)):''}<hr>
   ${(p.itens||[]).map(i=>`<div class="r"><span>${i.qtd}x ${esc(i.nome)}${i.variacao?' ('+esc(i.variacao)+')':''}</span><span>${(+i.total).toFixed(2)}</span></div>${(i.escolhas||[]).length?'<small>'+esc(fmtEscolhas(i))+'</small><br>':''}${i.adicionais&&i.adicionais.length?'<small>+ '+i.adicionais.map(a=>esc(a.nome)).join(', ')+'</small><br>':''}${i.obs?'<small>OBS: '+esc(i.obs)+'</small><br>':''}`).join('')}
   <hr><div class="r"><span>Subtotal</span><span>${(+p.subtotal).toFixed(2)}</span></div>${p.tipo==='entrega'?`<div class="r"><span>Entrega</span><span>${(+p.taxa).toFixed(2)}</span></div>`:''}<div class="r"><b>TOTAL</b><b>R$ ${(+p.total).toFixed(2)}</b></div>
   <div>Pagamento: ${(FORMAS[pg.forma]||'').replace(/^\S+ /,'')}${p.pago?' (PAGO)':''}</div>${pg.trocoPara?`<div>Troco p/ R$ ${(+pg.trocoPara).toFixed(2)} → levar R$ ${(pg.trocoPara-p.total).toFixed(2)}</div>`:''}
@@ -620,6 +625,92 @@ async function salvarProd(){
 }
 function duplicarProd(id){const p=produtos.find(x=>x.id===id);editarProd(null,{...p,nome:p.nome+' (cópia)'})}
 async function excluirProd(id){if(!confirm('Excluir este produto?'))return;try{const b=db.batch();b.delete(lojaRef().collection('produtos').doc(id));b.delete(lojaRef().collection('estoque').doc(id));await b.commit();fecharModal();toast('Produto excluído')}catch(e){toast('Erro: '+e.message)}}
+
+// ---------- Entregadores: despacho e acerto ----------
+// pedido.entregador {email,nome} · entregaAberta (true enquanto não entregue) · entregaDia · despachoOrdem · recebido {forma,valor} · acertoId
+// acertos/{id}: {entregador, nome, dia, n, taxas, din, pagar, saldo, cfg, pedidos[], ms, por}
+let entregadores=[],unsubEnt=null;
+function calcAcerto(peds,cfg){
+  cfg=cfg||{};const ent=peds.filter(p=>p.status==='entregue'),n=ent.length,v=+cfg.valor||0;
+  const taxas=ent.reduce((t,p)=>t+(+p.taxa||0),0);
+  const din=ent.filter(p=>p.recebido&&p.recebido.forma==='dinheiro').reduce((t,p)=>t+(+p.recebido.valor||0),0);
+  const pagar=cfg.modo==='taxa'?taxas*v/100:cfg.modo==='diaria'?(n>0?v:0):n*v;
+  return{n,taxas:round2(taxas),din:round2(din),pagar:round2(pagar),saldo:round2(din-pagar)};
+}
+const cfgTxt=c=>!c||!(+c.valor)?'pagamento não configurado (Ajustes)':c.modo==='taxa'?`${String(c.valor).replace('.',',')}% da taxa de entrega`:c.modo==='diaria'?`diária de ${brl(c.valor)}`:`${brl(c.valor)} por entrega`;
+function ouvirEntregadores(){
+  if(unsubEnt)unsubEnt();
+  unsubEnt=db.collection(USERS).where('marmitaId','==',lojaId).onSnapshot(q=>{entregadores=q.docs.filter(d=>d.data().papel==='entregador').map(d=>({email:d.id,nome:d.data().nome||d.id}));if(tabAtual==='pedidos')renderPedidos()},e=>console.error(e));
+}
+function botaoEntregador(p){
+  if(p.tipo!=='entrega'||['entregue','cancelado'].includes(p.status))return p.entregador?`<div class="mut sm">🛵 ${esc(p.entregador.nome)}${p.recebido?` · recebeu ${({dinheiro:'💵',cartao:'💳',pix:'💠'})[p.recebido.forma]||''} ${brl(p.recebido.valor)}`:''}</div>`:'';
+  return `<button class="btn" style="${p.entregador?'border-color:#74c0fc;background:#e7f5ff':''}" onclick="escolherEntregador('${p.id}')">🛵 ${p.entregador?esc(p.entregador.nome.split(' ')[0]):'Entregador'}</button>`;
+}
+function escolherEntregador(id){
+  const p=achar(id);
+  if(!entregadores.length)return modal(`<h2>🛵 Entregadores</h2><p class="mut">Nenhum entregador cadastrado. Em <b>Ajustes → Equipe</b>, adicione como <b>Entregador</b>. Ele usa o app próprio de entregas.</p><button class="btn pri big" onclick="fecharModal();irTab('ajustes')">Ir para Ajustes</button>`);
+  const naRua=em=>pedidos.concat(encomendas).filter(x=>x.entregador&&x.entregador.email===em&&x.entregaAberta).length;
+  modal(`<h2>🛵 Quem leva o pedido #${p.numero}?</h2><p class="mut sm">${esc(endTxt(p.cliente))}</p>
+  ${entregadores.map(e=>`<label class="opt" style="display:flex;gap:10px;align-items:center;border:1px solid var(--bd);border-radius:10px;padding:12px;margin:6px 0"><input type="radio" name="entg" value="${esc(e.email)}" ${p.entregador&&p.entregador.email===e.email?'checked':''} style="width:auto;margin:0"><span style="flex:1"><b>${esc(e.nome)}</b></span><span class="mut sm">${naRua(e.email)} na rua</span></label>`).join('')}
+  <label class="ck" style="margin-top:10px"><input type="checkbox" id="entSai"> Já saiu para entrega agora</label>
+  <div class="row"><button class="btn pri" style="flex:1" onclick="atribuir('${id}')">Confirmar</button>${p.entregador?`<button class="btn danger" onclick="atribuir('${id}',true)">Tirar</button>`:''}</div>
+  <p class="mut sm">Selecione vários pedidos para o mesmo entregador para montar uma saída; ele vê na ordem em que foram passados.</p>`);
+}
+async function atribuir(id,tirar){
+  const p=achar(id),ref=lojaRef().collection('pedidos').doc(id);
+  if(tirar){try{await ref.update({entregador:firebase.firestore.FieldValue.delete(),entregaAberta:false,entregaDia:firebase.firestore.FieldValue.delete()});fecharModal();toast('Entregador removido')}catch(e){toast('Erro: '+e.message)}return}
+  const em=(document.querySelector('input[name=entg]:checked')||{}).value;if(!em)return toast('Escolha o entregador');
+  const e=entregadores.find(x=>x.email===em),sai=$('#entSai').checked,t=Date.now();
+  const upd={entregador:{email:e.email,nome:e.nome},entregaAberta:true,entregaDia:p.paraData||dStr(new Date(p.criadoMs||t)),despachoOrdem:t};
+  if(sai){upd.status='saiu';upd['statusMs.saiu']=t;upd.saidaMs=t}
+  try{
+    const b=db.batch();
+    if(sai&&!p.estoqueBaixado&&!(p.paraData&&p.paraData>hojeStr())&&movimentarEstoque(b,p,-1))upd.estoqueBaixado=true;
+    b.update(ref,upd);await b.commit();fecharModal();toast(`Passado para ${e.nome.split(' ')[0]} 🛵`);
+  }catch(err){toast('Erro: '+err.message)}
+}
+/* visão "Na rua" + acerto do dia */
+async function renderNaRua(el){
+  const dia=diaPedidos,cfg=loja.pagEntregador;
+  el.innerHTML='<p class="vazio">Carregando…</p>';
+  let peds=[];try{peds=(await lojaRef().collection('pedidos').where('entregaDia','==',dia).get()).docs.map(d=>({id:d.id,...d.data()}))}catch(e){el.innerHTML='<p class="vazio">Erro: '+esc(e.message)+'</p>';return}
+  const por={};peds.filter(p=>p.entregador&&p.status!=='cancelado').forEach(p=>{(por[p.entregador.email]=por[p.entregador.email]||{nome:p.entregador.nome,ps:[]}).ps.push(p)});
+  entregadores.forEach(e=>{por[e.email]=por[e.email]||{nome:e.nome,ps:[]}});
+  const semEnt=pedidos.filter(p=>p.tipo==='entrega'&&!p.entregador&&['preparo','saiu'].includes(p.status));
+  el.innerHTML=`<p class="mut sm" style="margin-bottom:8px">Pagamento dos entregadores: <b>${esc(cfgTxt(cfg))}</b></p>
+  ${semEnt.length?`<div class="card" style="background:#fff4e6;border-color:#ffd8a8"><b>⚠️ ${semEnt.length} entrega(s) sem entregador:</b> ${semEnt.map(p=>`<a href="javascript:void 0" onclick="escolherEntregador('${p.id}')">#${p.numero}</a>`).join(' · ')}</div>`:''}
+  ${Object.entries(por).map(([em,o])=>{
+    const rua=o.ps.filter(p=>p.entregaAberta),pend=o.ps.filter(p=>!p.acertoId),a=calcAcerto(pend,cfg),feitos=o.ps.filter(p=>p.acertoId&&p.status==='entregue').length;
+    const semPag=pend.filter(p=>p.status==='entregue'&&!p.pago);
+    return `<div class="card"><div class="pch"><b>🛵 ${esc(o.nome)}</b><span class="tag ${rua.length?'t-saiu':''}">${rua.length?rua.length+' na rua':'livre'}</span></div>
+    ${rua.map(p=>`<div class="sm" style="margin-top:4px">• #${p.numero} ${esc((p.cliente||{}).nome)} – ${esc(endTxt(p.cliente))} <span class="mut">(${p.status==='saiu'?'em rota desde '+hora(p.saidaMs):'aguardando sair'})</span></div>`).join('')}
+    <table style="margin-top:8px"><tr><td>Entregas concluídas</td><td class="r"><b>${a.n}</b></td></tr><tr><td>Taxas de entrega</td><td class="r">${brl(a.taxas)}</td></tr>
+    <tr><td>Dinheiro recebido em mãos</td><td class="r">${brl(a.din)}</td></tr><tr><td>A pagar ao entregador</td><td class="r">${brl(a.pagar)}</td></tr>
+    <tr><td><b>${a.saldo>=0?'Ele devolve à loja':'A loja paga a ele'}</b></td><td class="r"><b style="color:${a.saldo>=0?'var(--al)':'var(--ok)'}">${brl(Math.abs(a.saldo))}</b></td></tr></table>
+    ${semPag.length?`<p class="sm" style="color:var(--al);margin-top:6px">❌ Entregue sem pagamento: ${semPag.map(p=>'#'+p.numero+' ('+brl(p.total)+')').join(', ')}</p>`:''}
+    ${feitos?`<p class="mut sm" style="margin-top:6px">✅ ${feitos} entrega(s) já acertada(s) hoje</p>`:''}
+    ${a.n?`<button class="btn pri" style="width:100%;margin-top:8px" onclick="fecharAcerto('${esc(em)}','${dia}')">✅ Fechar acerto de ${esc(o.nome.split(' ')[0])}</button>`:''}</div>`;
+  }).join('')||'<p class="vazio">Nenhum entregador cadastrado. Adicione em Ajustes → Equipe como Entregador.</p>'}
+  <button class="btn" style="width:100%" onclick="verAcertos()">📜 Histórico de acertos</button>`;
+}
+async function fecharAcerto(em,dia){
+  const peds=(await lojaRef().collection('pedidos').where('entregaDia','==',dia).get()).docs.map(d=>({id:d.id,...d.data()})).filter(p=>p.entregador&&p.entregador.email===em&&!p.acertoId&&p.status==='entregue');
+  if(!peds.length)return toast('Nada para acertar');
+  const cfg=loja.pagEntregador||{},a=calcAcerto(peds,cfg),nome=peds[0].entregador.nome;
+  if(!confirm(`Fechar o acerto de ${nome}?\n\n${a.n} entrega(s)\nA pagar: ${brl(a.pagar)}\nDinheiro em mãos: ${brl(a.din)}\n${a.saldo>=0?'Ele devolve: ':'A loja paga: '}${brl(Math.abs(a.saldo))}`))return;
+  try{
+    const b=db.batch(),ref=lojaRef().collection('acertos').doc();
+    b.set(ref,{entregador:em,nome,dia,...a,cfg,pedidos:peds.map(p=>p.numero),ms:Date.now(),por:user.email});
+    peds.forEach(p=>b.update(lojaRef().collection('pedidos').doc(p.id),{acertoId:ref.id}));
+    await b.commit();toast('Acerto fechado ✅');renderPedidos();
+  }catch(e){toast('Erro: '+e.message)}
+}
+async function verAcertos(){
+  modal('<h2>📜 Acertos</h2><p class="vazio">Carregando…</p>');
+  try{const q=await lojaRef().collection('acertos').orderBy('ms','desc').limit(50).get();
+    modal(`<h2>📜 Acertos dos entregadores</h2>${q.docs.map(d=>{const a=d.data();return `<div class="card" style="padding:10px 12px"><div class="pch"><b>${esc(a.nome)}</b><span class="mut sm">${a.dia.split('-').reverse().join('/')}</span></div><div class="sm">${a.n} entrega(s) · pago ${brl(a.pagar)} · dinheiro ${brl(a.din)} · ${a.saldo>=0?'devolveu':'recebeu'} <b>${brl(Math.abs(a.saldo))}</b></div><div class="mut sm">Pedidos ${a.pedidos.map(n=>'#'+n).join(', ')} · ${esc(cfgTxt(a.cfg))}</div></div>`}).join('')||'<p class="vazio">Nenhum acerto fechado ainda.</p>'}`);
+  }catch(e){modal('<h2>📜 Acertos</h2><p class="vazio">Erro: '+esc(e.message)+'</p>')}
+}
 
 // ---------- Imagens (reduzidas no aparelho e guardadas no próprio cadastro) ----------
 function lerImagem(file){return new Promise((ok,erro)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{ok(im)};im.onerror=()=>erro(new Error('Não foi possível abrir esta imagem'));im.src=u})}
@@ -887,6 +978,11 @@ function renderAjustes(){
    <label>Entrega grátis em pedidos a partir de (R$)</label><input id="aGratis" inputmode="decimal" value="${fmtNum(L.freteGratisAcima)}" placeholder="Vazio = nunca">
    <label>Pedido mínimo (R$)</label><input id="aMin" inputmode="decimal" value="${fmtNum(L.pedidoMinimo)}" placeholder="Vazio = sem mínimo">
    <label>Tempo estimado de entrega</label><input id="aTempo" value="${esc(L.tempoEntrega||'')}" placeholder="40 a 60 min"></div>
+  <div class="card"><h4>🛵 Pagamento dos entregadores</h4>
+   <label>Como a loja paga o entregador</label><select id="aPagModo" onchange="$('#aPagLbl').textContent={entrega:'Valor por entrega (R$)',taxa:'% da taxa de entrega',diaria:'Valor da diária (R$)'}[this.value]">
+    ${[['entrega','Valor fixo por entrega'],['taxa','Porcentagem da taxa de entrega'],['diaria','Diária fixa (por dia trabalhado)']].map(([k,l])=>`<option value="${k}" ${(L.pagEntregador||{}).modo===k?'selected':''}>${l}</option>`).join('')}</select>
+   <label id="aPagLbl">${{entrega:'Valor por entrega (R$)',taxa:'% da taxa de entrega',diaria:'Valor da diária (R$)'}[(L.pagEntregador||{}).modo||'entrega']}</label><input id="aPagVal" inputmode="decimal" value="${fmtNum((L.pagEntregador||{}).valor)}" placeholder="Ex.: 4,00 · 100 · 60,00">
+   <p class="mut sm">Usado no acerto do dia (Pedidos → 🛵 Entregadores): quanto o entregador recebe e quanto devolve do dinheiro que recebeu em mãos.</p></div>
   <div class="card"><h4>⏰ Horário e encomendas</h4>
    <label>Aceitar pedidos do dia até</label><input id="aLimite" type="time" value="${esc(L.horaLimite||'')}"><p class="mut sm">Vazio = enquanto a chave "Aberto" estiver ligada. Depois do horário, o cliente não consegue pedir para hoje.</p>
    <label class="ck"><input type="checkbox" id="aEnc" ${L.aceitaEncomenda?'checked':''}> Aceitar encomendas para amanhã</label><p class="mut sm">O cliente vê o cardápio de amanhã (se já estiver publicado) e pode encomendar, mesmo com a loja fechada. As encomendas aparecem em Pedidos → 📅 Encomendas.</p></div>
@@ -900,9 +996,11 @@ function renderAjustes(){
    <label class="ck"><input type="checkbox" id="fMP" ${f.pixMP?'checked':''}> Pix automático (Mercado Pago, confirma sozinho)</label>
    <div class="sub"><label>Access Token de produção do Mercado Pago</label><input id="aMPTok" type="password" autocomplete="off" placeholder="APP_USR-…"><p class="mut sm" id="mpInfo">O dinheiro cai direto na conta Mercado Pago da marmitaria.</p></div></div>
   <button class="btn pri big" onclick="salvarAjustes()">💾 Salvar ajustes</button>
-  <div class="card"><h4>👥 Equipe</h4><p class="mut sm">Funcionários veem pedidos e cardápio, mas não mexem nos ajustes.</p><div id="equipe" style="margin-top:8px">Carregando…</div>
+  <div class="card"><h4>👥 Equipe</h4><p class="mut sm"><b>Funcionário</b>: pedidos, cardápio e estoque (sem ajustes). <b>Entregador</b>: só o app de entregas, com as entregas passadas para ele.</p><div id="equipe" style="margin-top:8px">Carregando…</div>
    <label>Nome</label><input id="eqNome"><label>E-mail</label><input id="eqEmail" type="email"><label>Senha inicial (mín. 6 caracteres)</label><input id="eqSenha">
-   <button class="btn" onclick="addFunc()">+ Adicionar funcionário</button></div>`:'<div class="card mut">Somente o responsável pela marmitaria altera os ajustes.</div>'}
+   <label>Função</label><select id="eqPapel"><option value="func">Funcionário</option><option value="entregador">🛵 Entregador</option></select>
+   <button class="btn" onclick="addFunc()">+ Adicionar à equipe</button>
+   <div class="sub" style="margin-top:10px"><b class="sm">App do entregador</b><input readonly value="${esc(baseApp()+'entrega/')}" onclick="this.select()"><div class="row"><button class="btn" onclick="copiarTxt(baseApp()+'entrega/')">Copiar link</button><a class="btn" target="_blank" href="https://wa.me/?text=${encodeURIComponent('App de entregas da '+L.nome+': '+baseApp()+'entrega/ (entre com o e-mail e a senha que te passei e instale pelo Chrome)')}">Enviar no WhatsApp</a></div></div></div>`:'<div class="card mut">Somente o responsável pela marmitaria altera os ajustes.</div>'}
   <div class="card"><h4>👤 Minha conta</h4><p class="mut sm">${esc(user.email)}</p><div class="row"><button class="btn" onclick="auth.sendPasswordResetEmail(user.email).then(()=>toast('Link para trocar a senha enviado ao seu e-mail'))">Trocar senha</button><button class="btn danger" onclick="sair()">Sair</button></div></div>`;
   new QRCode($('#qrLink'),{text:link,width:190,height:190});
   if(dono){carregarEquipe();lojaRef().collection('privado').doc('mp').get().then(s=>{mpTemToken=s.exists&&!!s.data().accessToken;if(mpTemToken&&$('#aMPTok')){$('#aMPTok').placeholder='•••••• já cadastrado (vazio = manter)';}}).catch(()=>{})}
@@ -912,7 +1010,7 @@ function sair(){localStorage.removeItem('mm_super_loja');auth.signOut()}
 async function salvarAjustes(){
   const g=id=>$('#'+id).value.trim(),c=id=>$('#'+id).checked;
   const d={nome:g('aNome'),whatsapp:g('aWa'),endereco:g('aEnd'),cidade:g('aCid'),horario:g('aHor'),cor:g('aCor'),fazEntrega:c('aFaz'),aceitaRetirada:c('aRet'),
-    taxaEntrega:num(g('aTaxa')),freteGratisAcima:num(g('aGratis')),pedidoMinimo:num(g('aMin')),tempoEntrega:g('aTempo'),horaLimite:g('aLimite'),aceitaEncomenda:c('aEnc'),
+    taxaEntrega:num(g('aTaxa')),freteGratisAcima:num(g('aGratis')),pedidoMinimo:num(g('aMin')),tempoEntrega:g('aTempo'),horaLimite:g('aLimite'),aceitaEncomenda:c('aEnc'),pagEntregador:{modo:$('#aPagModo').value,valor:num(g('aPagVal'))},
     formas:{dinheiro:c('fDin'),cartao:c('fCar'),pix:c('fPix'),pixMP:c('fMP')},pixChave:g('aPixCh'),pixNome:g('aPixNome'),pixCidade:g('aPixCid')};
   const tok=g('aMPTok');
   if(!d.nome)return toast('Informe o nome');
@@ -924,7 +1022,7 @@ async function salvarAjustes(){
 }
 async function carregarEquipe(){
   try{const q=await db.collection(USERS).where('marmitaId','==',lojaId).get();
-    $('#equipe').innerHTML=q.docs.map(d=>{const u=d.data();return `<div class="pr-row" style="cursor:default"><div style="flex:1;min-width:0"><b>${esc(u.nome||d.id)}</b><div class="mut sm">${esc(d.id)} · ${u.papel==='func'?'Funcionário':'Responsável'}</div></div>${u.papel==='func'?`<button class="ib" onclick="remFunc('${esc(d.id)}')">✕</button>`:''}</div>`}).join('')||'<p class="mut sm">Ninguém cadastrado.</p>'}
+    $('#equipe').innerHTML=q.docs.map(d=>{const u=d.data();return `<div class="pr-row" style="cursor:default"><div style="flex:1;min-width:0"><b>${esc(u.nome||d.id)}</b><div class="mut sm">${esc(d.id)} · ${u.papel==='func'?'Funcionário':u.papel==='entregador'?'🛵 Entregador':'Responsável'}</div></div>${['func','entregador'].includes(u.papel)?`<button class="ib" onclick="remFunc('${esc(d.id)}')">✕</button>`:''}</div>`}).join('')||'<p class="mut sm">Ninguém cadastrado.</p>'}
   catch(e){$('#equipe').innerHTML='<p class="mut sm">Não foi possível carregar a equipe.</p>'}
 }
 async function criarLogin(email,senha){
@@ -935,19 +1033,20 @@ async function criarLogin(email,senha){
   catch(e){if(e.code==='auth/email-already-in-use')return false;throw e}
 }
 async function addFunc(){
-  const nome=$('#eqNome').value.trim(),email=$('#eqEmail').value.trim().toLowerCase(),senha=$('#eqSenha').value;
+  const nome=$('#eqNome').value.trim(),email=$('#eqEmail').value.trim().toLowerCase(),senha=$('#eqSenha').value,papel=$('#eqPapel').value;
+  if(!nome)return toast('Informe o nome');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return toast('E-mail inválido');
   if(senha.length<6)return toast('Senha com pelo menos 6 caracteres');
   try{
     const nova=await criarLogin(email,senha);
-    try{await db.collection(USERS).doc(email).set({marmitaId:lojaId,nome,papel:'func',criadoMs:Date.now()})}
+    try{await db.collection(USERS).doc(email).set({marmitaId:lojaId,nome,papel,criadoMs:Date.now()})}
     catch(e){return toast('Este e-mail já está vinculado a uma marmitaria')}
     ['eqNome','eqEmail','eqSenha'].forEach(i=>$('#'+i).value='');
-    toast(nova?'Funcionário adicionado. Passe o e-mail e a senha para ele.':'Funcionário adicionado (ele já tinha login: usa a senha que já tem).');
+    toast((papel==='entregador'?'Entregador':'Funcionário')+(nova?' adicionado. Passe o e-mail e a senha para ele.':' adicionado (já tinha login: usa a senha que já tem).'));
     carregarEquipe();
   }catch(e){toast('Erro: '+(e.code==='auth/weak-password'?'senha fraca':e.message))}
 }
-async function remFunc(email){if(!confirm('Remover o acesso deste funcionário?'))return;try{await db.collection(USERS).doc(email).delete();carregarEquipe()}catch(e){toast('Erro: '+e.message)}}
+async function remFunc(email){if(!confirm('Remover o acesso desta pessoa?'))return;try{await db.collection(USERS).doc(email).delete();carregarEquipe()}catch(e){toast('Erro: '+e.message)}}
 
 // ---------- Suporte (somente o administrador escolhe qual painel abrir; cadastro fica no Administrador Apps) ----------
 async function renderAdmin(){
