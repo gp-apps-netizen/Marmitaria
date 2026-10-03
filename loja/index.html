@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#d9480f">
+<title>Painel da Marmitaria</title>
+<link rel="manifest" id="mf">
+<link rel="icon" id="fav">
+<link rel="apple-touch-icon" id="ati">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#f6f4f2;--card:#fff;--tx:#25201b;--mut:#857a70;--pri:#d9480f;--ok:#2b8a3e;--bd:#e9e2db;--al:#c92a2a}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);font-size:15px}
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.lbox{background:var(--card);border-radius:18px;padding:26px 20px;width:100%;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.08);text-align:center}
+.lbox h1{font-size:21px;margin:8px 0 16px}
+.top{position:sticky;top:0;z-index:10;background:var(--pri);color:#fff;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tn{font-weight:800;font-size:17px;line-height:1.2}.top .mut{color:rgba(255,255,255,.85)}
+.tr{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+main{padding:12px 12px 90px;max-width:760px;margin:0 auto}
+.tab{display:none}.tab.on{display:block}
+.bn{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--bd);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:10}
+.bn button{flex:1;border:0;background:none;padding:9px 2px 8px;font:inherit;font-size:11.5px;color:var(--mut);font-weight:600;position:relative}
+.bn button i{display:block;font-style:normal;font-size:20px}
+.bn button.on{color:var(--pri)}
+.bn .bdg{position:absolute;top:4px;left:55%;background:var(--al);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;display:none}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h4{margin-bottom:8px}
+label{display:block;font-size:13px;font-weight:600;margin:8px 0 4px}
+label.ck{display:flex;gap:8px;align-items:center;font-weight:500;font-size:14.5px}
+label.ck input{width:auto;margin:0;accent-color:var(--pri)}
+input,textarea,select{width:100%;font:inherit;border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:6px;background:#fff;color:var(--tx)}
+input[type=color]{height:44px;padding:4px}
+.sub{border-left:3px solid var(--bd);padding-left:10px;margin:4px 0 8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.row2{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid var(--bd);background:#fff;color:var(--tx);border-radius:10px;padding:9px 12px;font:inherit;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.big{width:100%;padding:14px;font-size:16px;margin-bottom:12px}
+.btn.danger{color:var(--al);border-color:#ffc9c9}
+.btn:disabled{opacity:.6}
+.ib{border:0;background:rgba(0,0,0,.06);border-radius:8px;width:36px;height:36px;font-size:16px;flex-shrink:0}
+.top .ib{background:rgba(255,255,255,.2);color:#fff}
+.lnk{border:0;background:none;color:var(--pri);font:inherit;font-weight:600;padding:4px 0}
+.mut{color:var(--mut)}.sm{font-size:12.5px}
+.vazio{text-align:center;color:var(--mut);padding:28px 10px}
+.sec{font-size:15px;margin:16px 2px 8px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;border:1px solid var(--bd);background:#fff;border-radius:18px;padding:6px 11px;font:inherit;font-size:13px;font-weight:600}
+.chip.on{background:var(--tx);color:#fff;border-color:var(--tx)}
+.chip b{background:var(--pri);color:#fff;border-radius:9px;padding:0 6px;font-size:11px}
+.bar1{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+.bar1 input{width:auto;margin:0}
+.pc{background:var(--card);border:1px solid var(--bd);border-left:5px solid #ced4da;border-radius:12px;padding:12px;margin-bottom:10px}
+.pc.st-novo{border-left-color:var(--al);animation:pulse 1.6s infinite}
+.pc.st-preparo{border-left-color:#f08c00}.pc.st-saiu{border-left-color:#1c7ed6}.pc.st-entregue{border-left-color:var(--ok)}.pc.st-cancelado{opacity:.6}
+@keyframes pulse{50%{box-shadow:0 0 0 3px #ffc9c9}}
+.pch{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pn{font-size:20px;font-weight:800}
+.tag{font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:10px;background:#f1f3f5;vertical-align:middle}
+.t-novo{background:#ffe3e3;color:var(--al)}.t-preparo{background:#fff3bf;color:#a85d00}.t-saiu{background:#d0ebff;color:#1864ab}.t-entregue,.pago{background:#d3f9d8;color:var(--ok)}.t-cancelado{background:#e9ecef;color:#495057}
+.pcl{margin:6px 0 2px}.pcl a{color:inherit}
+.its{list-style:none;margin:8px 0;padding:8px 10px;background:#faf8f6;border-radius:8px}
+.its li{padding:3px 0}
+.obs{color:#a85d00;font-weight:600;font-size:13px;margin:4px 0}
+.pct{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-top:4px}
+.pct b{font-size:17px}
+.pca{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pr-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
+.pr-row.inat{opacity:.55}
+.sw{position:relative;display:inline-block;width:46px;height:26px;margin:0;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0;margin:0}
+.sw span{position:absolute;inset:0;background:#adb5bd;border-radius:26px;transition:.2s}
+.sw span::before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--ok)}
+.sw input:checked+span::before{transform:translateX(20px)}
+.dias{display:flex;flex-wrap:wrap;gap:6px}
+.dias label{display:flex;align-items:center;gap:4px;border:1px solid var(--bd);border-radius:8px;padding:6px 9px;margin:0;font-weight:500}
+.dias input{width:auto;margin:0;accent-color:var(--pri)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.stat .v{font-size:20px;font-weight:800;margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:7px 4px;border-bottom:1px solid var(--bd);text-align:left}
+td.r,th.r{text-align:right}
+.qr{display:flex;justify-content:center;margin:12px 0}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:50;align-items:flex-end;justify-content:center}
+#modal.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:600px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));position:relative}
+.sheet h2{font-size:19px;margin:0 36px 6px 0}
+.x{position:absolute;right:10px;top:10px;border:0;background:#f1f3f5;border-radius:50%;width:32px;height:32px;font-size:16px}
+#toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:#212529;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:92%;text-align:center}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div id="login" class="center" style="display:none">
+  <div class="lbox">
+    <div style="font-size:46px">🍱</div>
+    <h1>Painel da Marmitaria</h1>
+    <div id="lMsg" class="mut sm" style="margin-bottom:10px"></div>
+    <input id="lEmail" type="email" placeholder="E-mail" autocomplete="username">
+    <input id="lSenha" type="password" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()">
+    <button class="btn pri big" onclick="entrar()">Entrar</button>
+    <button class="lnk" onclick="esqueci()">Esqueci minha senha</button>
+    <div id="lSair" style="display:none;margin-top:8px"><button class="btn" onclick="auth.signOut()">Sair desta conta</button></div>
+  </div>
+</div>
+<div id="carregando" class="center"><div class="mut">Carregando…</div></div>
+
+<div id="app" style="display:none">
+  <header class="top">
+    <div style="min-width:0"><div class="tn" id="tNome">Marmitaria</div><div class="mut sm" id="tSub"></div></div>
+    <div class="tr">
+      <button class="ib" id="btnSom" onclick="toggleSom()" title="Som de novos pedidos">🔕</button>
+      <label class="sw" title="Aberto para pedidos"><input type="checkbox" id="swAberto" onchange="setAberto(this.checked)"><span></span></label>
+      <span id="lblAberto">Fechado</span>
+    </div>
+  </header>
+  <main>
+    <section id="t-pedidos" class="tab"></section>
+    <section id="t-cardapio" class="tab"></section>
+    <section id="t-relatorio" class="tab"></section>
+    <section id="t-ajustes" class="tab"></section>
+    <section id="t-admin" class="tab"></section>
+  </main>
+  <nav class="bn">
+    <button data-t="pedidos" onclick="irTab('pedidos')"><i>🧾</i>Pedidos<span class="bdg" id="bdgNovos"></span></button>
+    <button data-t="cardapio" onclick="irTab('cardapio')"><i>🍱</i>Cardápio</button>
+    <button data-t="relatorio" onclick="irTab('relatorio')"><i>📊</i>Relatório</button>
+    <button data-t="ajustes" onclick="irTab('ajustes')"><i>⚙️</i>Ajustes</button>
+    <button data-t="admin" id="navAdmin" style="display:none" onclick="irTab('admin')"><i>🛡️</i>Suporte</button>
+  </nav>
+</div>
+<div id="modal" onclick="if(event.target===this)fecharModal()"><div class="sheet"><button class="x" onclick="fecharModal()">✕</button><div id="mbody"></div></div></div>
+<div id="toast"></div>
+
+<script>
+// ==== Firebase do projeto atendimento-bar (o mesmo do bar e do salão) ====
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAeSmdHNn7LTk60DKO3DCGOTvPaNHdzMF4",
+  authDomain: "atendimento-bar.firebaseapp.com",
+  projectId: "atendimento-bar",
+  storageBucket: "atendimento-bar.firebasestorage.app",
+  messagingSenderId: "92179047707",
+  appId: "1:92179047707:web:08d82fc86c7da2f0215fbe"
+};
+const SUPER_ADMIN = 'godoygpx@gmail.com';
+// ===================================================================================================
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const brl=v=>(+v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const round2=v=>Math.round((+v||0)*100)/100;
+const hora=ms=>ms?new Date(ms).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'';
+function num(s){s=String(s??'').replace(/[^\d,.]/g,'');if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0}
+const fmtNum=v=>(+v||0)?String(+v).replace('.',','):'';
+const DIASC=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const FORMAS={dinheiro:'💵 Dinheiro',cartao:'💳 Cartão',pix:'💠 Pix (chave)',pixMP:'⚡ Pix automático'};
+const ST={novo:'Novo',preparo:'Em preparo',saiu:'Saiu p/ entrega',entregue:'Entregue',cancelado:'Cancelado'};
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),3000)}
+function modal(h){$('#mbody').innerHTML=h;$('#modal').classList.add('on');$('.sheet').scrollTop=0}
+function fecharModal(){$('#modal').classList.remove('on')}
+function waLink(tel,msg){let d=String(tel||'').replace(/\D/g,'');if(d.length<=11)d='55'+d;return 'https://wa.me/'+d+'?text='+encodeURIComponent(msg)}
+function fmtTel(t){const d=String(t||'').replace(/\D/g,'');return d.length===11?`(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`:d.length===10?`(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`:d}
+function endTxt(c){c=c||{};return [c.rua&&(c.rua+(c.num?', '+c.num:'')),c.comp,c.bairro,c.ref&&('Ref.: '+c.ref)].filter(Boolean).join(' – ')}
+function dStr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+const hojeStr=()=>dStr(new Date());
+function dt(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
+const slug=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+/,'').slice(0,40);
+function copiarTxt(t){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Copiado!')).catch(()=>prompt('Copie:',t))}
+function baseApp(){return location.origin+location.pathname.replace(/loja\/?(index\.html)?$/,'')}
+const linkCli=id=>baseApp()+'pedir/?m='+id;
+
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth=firebase.auth(),db=firebase.firestore();
+let user=null,perfil=null,isSuper=false,lojaId=null,loja=null,produtos=[],pedidos=[],unsub=[],unsubPed=null,tabAtual='pedidos',diaPedidos=hojeStr(),filtro='ativos',primeira=true;
+const isDono=()=>isSuper||(perfil&&perfil.marmitaId===lojaId&&(perfil.papel||'dono')==='dono');
+const USERS='usuariosMarmita';
+const diasAte=s=>Math.round((new Date(s+'T12:00')-new Date(hojeStr()+'T12:00'))/864e5);
+const lojaRef=()=>db.collection('marmitarias').doc(lojaId);
+
+// ---------- Login ----------
+function telaLogin(msg,sair){$('#carregando').style.display='none';$('#app').style.display='none';$('#login').style.display='';$('#lMsg').textContent=msg||'';$('#lSair').style.display=sair?'':'none'}
+async function entrar(){const e=$('#lEmail').value.trim(),s=$('#lSenha').value;if(!e||!s)return toast('Informe e-mail e senha');try{await auth.signInWithEmailAndPassword(e,s)}catch(err){toast(['auth/invalid-credential','auth/wrong-password','auth/user-not-found','auth/invalid-login-credentials'].includes(err.code)?'E-mail ou senha incorretos':'Erro: '+err.message)}}
+async function esqueci(){const e=$('#lEmail').value.trim();if(!e)return toast('Digite seu e-mail primeiro');try{await auth.sendPasswordResetEmail(e);toast('Enviamos um link para '+e)}catch(err){toast('Erro: '+err.message)}}
+function limpar(){unsub.forEach(f=>{try{f()}catch(e){}});unsub=[];if(unsubPed){unsubPed();unsubPed=null}pedidos=[];produtos=[];loja=null}
+
+auth.onAuthStateChanged(async u=>{
+  limpar();user=u;perfil=null;lojaId=null;
+  if(!u)return telaLogin('');
+  const email=(u.email||'').toLowerCase();isSuper=email===SUPER_ADMIN;
+  try{const s=await db.collection(USERS).doc(email).get();if(s.exists)perfil=s.data()}catch(e){console.error(e)}
+  if(!perfil&&!isSuper)return telaLogin('Este login ('+u.email+') não está vinculado a nenhuma marmitaria.',true);
+  $('#login').style.display='none';$('#carregando').style.display='none';$('#app').style.display='';
+  $('#navAdmin').style.display=isSuper?'':'none';
+  const pm=(new URLSearchParams(location.search).get('m')||'').trim();
+  let lid=perfil?perfil.marmitaId:null;
+  if(isSuper)lid=pm||localStorage.getItem('mm_super_loja')||lid;
+  if(lid){if(isSuper)localStorage.setItem('mm_super_loja',lid);abrirLoja(lid)}else{renderTopo();irTab('admin')}
+});
+
+function abrirLoja(id){
+  limpar();lojaId=id;primeira=true;
+  unsub.push(lojaRef().onSnapshot(s=>{
+    if(!s.exists){toast('Marmitaria não encontrada');if(isSuper){localStorage.removeItem('mm_super_loja');lojaId=null;irTab('admin')}return}
+    loja={id:s.id,...s.data()};renderTopo();if(tabAtual==='pedidos')renderPedidos();
+  },e=>toast('Sem permissão para esta marmitaria')));
+  unsub.push(lojaRef().collection('produtos').onSnapshot(q=>{produtos=q.docs.map(d=>({id:d.id,...d.data()}));if(tabAtual==='cardapio')renderCardapio()}));
+  diaPedidos=hojeStr();ouvirPedidos();irTab('pedidos');
+}
+function renderTopo(){
+  $('#tNome').textContent=loja?loja.nome:'Administração';
+  $('#tSub').textContent=(isSuper?'Administrador (suporte)':isDono()?'Responsável':'Funcionário')+(loja&&loja.status!=='ativo'?' · SUSPENSA':'');
+  $('#swAberto').checked=!!(loja&&loja.aberto);$('#swAberto').disabled=!loja;
+  $('#lblAberto').textContent=loja&&loja.aberto?'Aberto':'Fechado';
+  renderSomBtn();
+}
+function irTab(t){
+  if(!lojaId&&t!=='admin'){toast('Escolha uma marmitaria na aba Suporte');t='admin'}
+  tabAtual=t;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==='t-'+t));
+  document.querySelectorAll('.bn button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  ({pedidos:renderPedidos,cardapio:renderCardapio,relatorio:renderRelatorio,ajustes:renderAjustes,admin:renderAdmin})[t]();
+  window.scrollTo(0,0);
+}
+async function setAberto(v){try{await lojaRef().update({aberto:v});toast(v?'Loja ABERTA para pedidos':'Loja FECHADA para pedidos')}catch(e){toast('Erro: '+e.message);renderTopo()}}
+
+// ---------- Som / alertas ----------
+let somOn=localStorage.getItem('mm_som')==='1',actx=null,wake=null;
+function ctx(){actx=actx||new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();return actx}
+function beep(){try{const a=ctx(),t=a.currentTime;[0,.28,.56].forEach((d,i)=>{const o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=i===2?1320:880;g.gain.setValueAtTime(.0001,t+d);g.gain.exponentialRampToValueAtTime(.35,t+d+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d+.24);o.connect(g);g.connect(a.destination);o.start(t+d);o.stop(t+d+.26)})}catch(e){}}
+async function manterTela(){try{if(somOn&&'wakeLock'in navigator&&!document.hidden)wake=await navigator.wakeLock.request('screen')}catch(e){}}
+function toggleSom(){somOn=!somOn;localStorage.setItem('mm_som',somOn?'1':'0');if(somOn){beep();manterTela();toast('Som ligado. Deixe o painel aberto para ouvir os novos pedidos.');if('Notification'in window&&Notification.permission==='default')Notification.requestPermission()}renderSomBtn()}
+function renderSomBtn(){$('#btnSom').textContent=somOn?'🔔':'🔕'}
+document.addEventListener('click',()=>{if(somOn)try{ctx()}catch(e){}});
+document.addEventListener('visibilitychange',manterTela);
+setInterval(()=>{if(somOn&&diaPedidos===hojeStr()&&pedidos.some(p=>p.status==='novo'))beep()},20000);
+function alertaNovo(p){if(somOn)beep();if(navigator.vibrate)navigator.vibrate([300,100,300]);toast('🔔 Novo pedido #'+p.numero+' – '+(p.cliente||{}).nome);if('Notification'in window&&Notification.permission==='granted'&&document.hidden){try{new Notification('Novo pedido #'+p.numero,{body:(p.cliente||{}).nome+' · '+brl(p.total)})}catch(e){}}}
+
+// ---------- Pedidos ----------
+function ouvirPedidos(){
+  if(unsubPed)unsubPed();primeira=true;
+  const ini=dt(diaPedidos),fim=dt(diaPedidos);fim.setDate(fim.getDate()+1);
+  unsubPed=lojaRef().collection('pedidos').where('criadoEm','>=',ini).where('criadoEm','<',fim).orderBy('criadoEm','desc').onSnapshot(q=>{
+    const novos=[];q.docChanges().forEach(c=>{if(c.type==='added'&&!primeira&&c.doc.data().status==='novo')novos.push(c.doc.data())});
+    pedidos=q.docs.map(d=>({id:d.id,...d.data()}));primeira=false;
+    if(novos.length)alertaNovo(novos[0]);
+    const n=pedidos.filter(p=>p.status==='novo').length;const b=$('#bdgNovos');b.style.display=n?'':'none';b.textContent=n;
+    document.title=(n?`(${n}) `:'')+'Painel da Marmitaria';
+    if(tabAtual==='pedidos')renderPedidos();
+  },e=>{console.error(e);toast('Erro ao carregar pedidos: '+e.message)});
+}
+/* Suspensão e aviso de mensalidade (dados definidos no Administrador Apps) */
+function avisos(){
+  if(!loja)return '';
+  if(loja.status!=='ativo')return `<div class="card" style="background:#fff5f5;border-color:#ffc9c9"><b>⛔ Acesso suspenso.</b><div class="mut sm">O link de pedidos está fora do ar. Fale com o suporte para reativar.</div>${cobrancaBotoes()}</div>`;
+  if(!isDono()||loja.plano==='proprio'||!loja.vencimento)return '';
+  const c=loja.cobranca||{},d=diasAte(loja.vencimento);
+  if(d>(+c.dias||5))return '';
+  const quando=d<0?`venceu há ${-d} dia${d===-1?'':'s'}`:d===0?'vence hoje':`vence em ${d} dia${d===1?'':'s'}`;
+  return `<div class="card" style="background:${d<0?'#fff5f5':'#fff9db'};border-color:${d<0?'#ffc9c9':'#ffe066'}"><b>💳 Mensalidade ${quando}</b><div class="mut sm">${brl((+loja.mensalidade||0)/100)} · vencimento ${loja.vencimento.split('-').reverse().join('/')}</div>${cobrancaBotoes()}</div>`;
+}
+function cobrancaBotoes(){
+  const c=(loja&&loja.cobranca)||{};let h='';
+  if(c.pix)h+=`<button class="btn" onclick="copiarTxt(loja.cobranca.pix)">📋 Copiar Pix</button>`;
+  if(c.whats)h+=`<a class="btn" target="_blank" href="${waLink(c.whats,`Olá! Paguei a mensalidade da ${loja.nome}.`)}">💬 Avisar pagamento</a>`;
+  return h?`<div class="row">${h}</div>`:'';
+}
+function stLabel(p){if(p.tipo==='retirada'&&p.status==='saiu')return 'Pronto p/ retirada';if(p.tipo==='retirada'&&p.status==='entregue')return 'Retirado';return ST[p.status]||p.status}
+function renderPedidos(){
+  const el=$('#t-pedidos');if(!lojaId)return;
+  const at=['novo','preparo','saiu'],cont={ativos:0};
+  pedidos.forEach(p=>{cont[p.status]=(cont[p.status]||0)+1;if(at.includes(p.status))cont.ativos++});
+  const lista=pedidos.filter(p=>filtro==='todos'||(filtro==='ativos'?at.includes(p.status):p.status===filtro));
+  const fat=pedidos.filter(p=>p.status!=='cancelado').reduce((s,p)=>s+(+p.total||0),0);
+  el.innerHTML=`${avisos()}${loja&&!loja.aberto&&diaPedidos===hojeStr()?'<div class="card" style="background:#fff5f5;border-color:#ffc9c9"><b>🔒 A loja está FECHADA.</b> <span class="mut sm">Ligue a chave no topo para receber pedidos.</span></div>':''}
+  ${!somOn?'<div class="card" style="background:#fff9db;border-color:#ffe066" onclick="toggleSom()"><b>🔔 Toque aqui para ligar o som de novos pedidos</b></div>':''}
+  <div class="bar1"><input type="date" value="${diaPedidos}" onchange="diaPedidos=this.value;ouvirPedidos()"><div class="mut sm" style="text-align:right">${pedidos.length} pedido(s)<br><b>${brl(fat)}</b></div></div>
+  <div class="chips">${[['ativos','Em aberto'],['novo','Novos'],['preparo','Preparo'],['saiu','Saiu/Pronto'],['entregue','Entregues'],['cancelado','Cancelados'],['todos','Todos']].map(([k,l])=>`<button class="chip ${filtro===k?'on':''}" onclick="filtro='${k}';renderPedidos()">${l}${k!=='todos'&&cont[k]?` <b>${cont[k]}</b>`:''}</button>`).join('')}</div>
+  ${lista.length?lista.map(cardPedido).join(''):'<p class="vazio">Nenhum pedido aqui.</p>'}`;
+}
+function cardPedido(p){
+  const c=p.cliente||{},pg=p.pagamento||{};
+  const prox={novo:[['preparo','✅ Aceitar']],preparo:[['saiu',p.tipo==='entrega'?'🛵 Saiu p/ entrega':'📦 Pronto p/ retirada']],saiu:[['entregue',p.tipo==='entrega'?'✔️ Entregue':'✔️ Retirado']]}[p.status]||[];
+  return `<div class="pc st-${p.status}">
+  <div class="pch"><div><span class="pn">#${p.numero||'?'}</span> <span class="tag t-${p.status}">${stLabel(p)}</span>${p.pago?' <span class="tag pago">Pago</span>':''}</div><span class="mut sm">${hora(p.criadoMs)}</span></div>
+  <div class="pcl"><b>${esc(c.nome)}</b> · <a href="tel:${esc(c.tel)}">${fmtTel(c.tel)}</a></div>
+  <div class="mut sm">${p.tipo==='entrega'?'🛵 '+esc(endTxt(c)):'🏪 Retirada no local'}</div>
+  <ul class="its">${(p.itens||[]).map(i=>`<li><b>${i.qtd}×</b> ${esc(i.nome)}${i.variacao?' ('+esc(i.variacao)+')':''}${i.adicionais&&i.adicionais.length?'<br><small>+ '+i.adicionais.map(a=>esc(a.nome)).join(', ')+'</small>':''}${i.obs?'<div class="obs">⚠️ '+esc(i.obs)+'</div>':''}</li>`).join('')}</ul>
+  ${p.obs?`<div class="obs">📝 ${esc(p.obs)}</div>`:''}
+  <div class="pct"><span>${FORMAS[pg.forma]||''}${pg.trocoPara?` · troco p/ ${brl(pg.trocoPara)} <b style="font-size:13px">(levar ${brl(pg.trocoPara-p.total)})</b>`:''}</span><b>${brl(p.total)}</b></div>
+  ${p.tipo==='entrega'?`<div class="mut sm">Itens ${brl(p.subtotal)} + entrega ${brl(p.taxa)}</div>`:''}
+  ${p.status==='cancelado'?`<div class="mut sm">${p.canceladoPor==='cliente'?'Cancelado pelo cliente':'Cancelado pela loja'}${p.motivoCancel?': '+esc(p.motivoCancel):''}</div>`:''}
+  <div class="pca">${prox.map(([s,l])=>`<button class="btn pri" onclick="mudarStatus('${p.id}','${s}')">${l}</button>`).join('')}
+    ${!['cancelado','entregue'].includes(p.status)?`<button class="btn danger" onclick="cancelarPed('${p.id}')">Cancelar</button>`:''}
+    <button class="btn" onclick="togglePago('${p.id}')">${p.pago?'↩️ Não pago':'💲 Pago'}</button>
+    <a class="btn" target="_blank" href="${waCliente(p)}">💬</a>
+    <button class="btn" onclick="imprimir('${p.id}')">🖨️</button>
+    ${p.tipo==='entrega'?`<a class="btn" target="_blank" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(endTxt({...c,ref:''})+(loja&&loja.cidade?', '+loja.cidade:''))}">📍</a>`:''}</div></div>`;
+}
+function waCliente(p){
+  const n=(p.cliente.nome||'').split(' ')[0],lnk=linkCli(lojaId)+'#p='+p.id,L=loja?loja.nome:'';
+  const m={novo:`Olá, ${n}! Recebemos seu pedido #${p.numero} na ${L}.`,preparo:`Olá, ${n}! Seu pedido #${p.numero} da ${L} foi aceito e já está sendo preparado 👨‍🍳`,
+    saiu:p.tipo==='entrega'?`Olá, ${n}! Seu pedido #${p.numero} da ${L} saiu para entrega 🛵`:`Olá, ${n}! Seu pedido #${p.numero} da ${L} está pronto para retirada ✅`,
+    entregue:`Olá, ${n}! Obrigado pelo pedido #${p.numero} na ${L}. Bom apetite! 😋`,cancelado:`Olá, ${n}. Infelizmente seu pedido #${p.numero} na ${L} foi cancelado${p.motivoCancel?' ('+p.motivoCancel+')':''}.`}[p.status]||'';
+  return waLink(p.cliente.tel,m+(p.status!=='cancelado'?`\nAcompanhe: ${lnk}`:''));
+}
+async function mudarStatus(id,s){try{await lojaRef().collection('pedidos').doc(id).update({status:s,['statusMs.'+s]:Date.now()})}catch(e){toast('Erro: '+e.message)}}
+async function cancelarPed(id){const m=prompt('Cancelar o pedido? Motivo (opcional):');if(m===null)return;try{await lojaRef().collection('pedidos').doc(id).update({status:'cancelado','statusMs.cancelado':Date.now(),motivoCancel:m.trim(),canceladoPor:'loja'})}catch(e){toast('Erro: '+e.message)}}
+async function togglePago(id){const p=pedidos.find(x=>x.id===id);try{await lojaRef().collection('pedidos').doc(id).update({pago:!p.pago})}catch(e){toast('Erro: '+e.message)}}
+function imprimir(id){
+  const p=pedidos.find(x=>x.id===id),c=p.cliente||{},pg=p.pagamento||{};
+  const w=window.open('','_blank','width=380,height=640');if(!w)return toast('Permita pop-ups para imprimir');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pedido ${p.numero}</title><style>body{font-family:monospace;width:58mm;font-size:12px;margin:0;padding:4px}h1{font-size:18px;text-align:center;margin:4px 0}h2{font-size:13px;text-align:center;margin:0}hr{border:0;border-top:1px dashed #000;margin:6px 0}.r{display:flex;justify-content:space-between;gap:6px}small{font-size:11px}@page{margin:0}</style></head><body>
+  <h2>${esc(loja.nome)}</h2><h1>PEDIDO #${p.numero}</h1><div style="text-align:center">${new Date(p.criadoMs).toLocaleString('pt-BR')}</div><hr>
+  <b>${p.tipo==='entrega'?'ENTREGA':'RETIRADA'}</b><br>${esc(c.nome)} – ${fmtTel(c.tel)}${p.tipo==='entrega'?'<br>'+esc(endTxt(c)):''}<hr>
+  ${(p.itens||[]).map(i=>`<div class="r"><span>${i.qtd}x ${esc(i.nome)}${i.variacao?' ('+esc(i.variacao)+')':''}</span><span>${(+i.total).toFixed(2)}</span></div>${i.adicionais&&i.adicionais.length?'<small>+ '+i.adicionais.map(a=>esc(a.nome)).join(', ')+'</small><br>':''}${i.obs?'<small>OBS: '+esc(i.obs)+'</small><br>':''}`).join('')}
+  <hr><div class="r"><span>Subtotal</span><span>${(+p.subtotal).toFixed(2)}</span></div>${p.tipo==='entrega'?`<div class="r"><span>Entrega</span><span>${(+p.taxa).toFixed(2)}</span></div>`:''}<div class="r"><b>TOTAL</b><b>R$ ${(+p.total).toFixed(2)}</b></div>
+  <div>Pagamento: ${(FORMAS[pg.forma]||'').replace(/^\S+ /,'')}${p.pago?' (PAGO)':''}</div>${pg.trocoPara?`<div>Troco p/ R$ ${(+pg.trocoPara).toFixed(2)} → levar R$ ${(pg.trocoPara-p.total).toFixed(2)}</div>`:''}
+  ${p.obs?'<hr>OBS: '+esc(p.obs):''}<hr><div style="text-align:center">Obrigado!</div>
+  <script>onload=function(){print();setTimeout(function(){close()},800)}<\/script></body></html>`);
+  w.document.close();
+}
+
+// ---------- Cardápio ----------
+let ed=null;
+const diasTxt=d=>!d||!d.length?'Todos os dias':d.length===7?'Todos os dias':[...d].sort().map(i=>DIASC[i]).join(', ');
+const precoTxt=p=>(p.variacoes||[]).length?p.variacoes.map(v=>`${v.nome} ${brl(v.preco)}`).join(' · '):brl(p.preco);
+function renderCardapio(){
+  if(!loja)return;
+  const el=$('#t-cardapio'),cats={};
+  produtos.forEach(p=>{const c=p.categoria||'Outros';(cats[c]=cats[c]||[]).push(p)});
+  const ord=['Marmitas','Pratos','Porções','Bebidas','Sobremesas','Adicionais'];
+  const nomes=Object.keys(cats).sort((a,b)=>{const ia=ord.indexOf(a),ib=ord.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b)});
+  const esg=produtos.filter(p=>p.esgotado).length;
+  el.innerHTML=`<div class="card"><h4>📣 Aviso do dia</h4><p class="mut sm">Aparece no topo do cardápio do cliente. Ex.: "Hoje tem feijoada! 🍲"</p><textarea id="avisoDia" rows="2">${esc(loja.avisoDia||'')}</textarea><button class="btn pri" onclick="salvarAviso()">Salvar aviso</button></div>
+  <div class="row"><button class="btn pri" onclick="editarProd()">+ Novo produto</button>${esg?`<button class="btn" onclick="reporEsgotados()">↺ Repor ${esg} esgotado(s)</button>`:''}</div>
+  <p class="mut sm">Toque no produto para editar. A chave verde = disponível; desligue quando esgotar.</p>
+  ${nomes.map(c=>`<h3 class="sec">${esc(c)}</h3>${cats[c].sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome)).map(p=>`<div class="pr-row ${p.ativo===false?'inat':''}"><div style="flex:1;min-width:0" onclick="editarProd('${p.id}')"><b>${esc(p.nome)}</b>${p.esgotado?' <span class="tag t-novo">Esgotado</span>':''}${p.ativo===false?' <span class="tag">Oculto</span>':''}<div class="mut sm">${precoTxt(p)} · ${diasTxt(p.dias)}</div></div><label class="sw"><input type="checkbox" ${p.esgotado?'':'checked'} onchange="setEsg('${p.id}',!this.checked)"><span></span></label></div>`).join('')}`).join('')||'<p class="vazio">Nenhum produto ainda. Cadastre as marmitas, bebidas, sobremesas e adicionais.</p>'}`;
+}
+async function salvarAviso(){try{await lojaRef().update({avisoDia:$('#avisoDia').value.trim()});toast('Aviso salvo')}catch(e){toast('Erro: '+e.message)}}
+async function setEsg(id,v){try{await lojaRef().collection('produtos').doc(id).update({esgotado:v});toast(v?'Marcado como esgotado':'Disponível de novo')}catch(e){toast('Erro: '+e.message)}}
+async function reporEsgotados(){const b=db.batch();produtos.filter(p=>p.esgotado).forEach(p=>b.update(lojaRef().collection('produtos').doc(p.id),{esgotado:false}));await b.commit();toast('Todos disponíveis de novo')}
+function editarProd(id,base){
+  const p=base||(id?produtos.find(x=>x.id===id):{nome:'',categoria:'Marmitas',preco:0,ativo:true,dias:[],variacoes:[],adicionais:[]});
+  ed={id:base?null:id,vars:JSON.parse(JSON.stringify(p.variacoes||[])),ads:JSON.parse(JSON.stringify(p.adicionais||[]))};
+  const cats=[...new Set(['Marmitas','Bebidas','Sobremesas','Adicionais'].concat(produtos.map(x=>x.categoria).filter(Boolean)))];
+  modal(`<h2>${ed.id?'Editar':'Novo'} produto</h2>
+  <label>Nome</label><input id="pNome" value="${esc(p.nome)}" placeholder="Ex.: Marmita de frango grelhado">
+  <label>Descrição</label><textarea id="pDesc" rows="2" placeholder="Arroz, feijão, frango grelhado, farofa e salada">${esc(p.descricao||'')}</textarea>
+  <label>Categoria</label><input id="pCat" list="dlCats" value="${esc(p.categoria||'')}"><datalist id="dlCats">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+  <label>Preço (R$)</label><input id="pPreco" inputmode="decimal" value="${fmtNum(p.preco)}" placeholder="Deixe vazio se usar tamanhos abaixo">
+  <label>Tamanhos <span class="mut sm">(ex.: P, M, G — cada um com seu preço)</span></label><div id="edVars"></div><button class="lnk" onclick="edAdd('vars')">+ adicionar tamanho</button>
+  <label>Adicionais <span class="mut sm">(ex.: ovo frito + R$ 3,00)</span></label><div id="edAds"></div><button class="lnk" onclick="edAdd('ads')">+ adicionar adicional</button>
+  <label>Dias do cardápio</label><p class="mut sm" style="margin-bottom:6px">Marcando dias, o item aparece no <b>"Cardápio de hoje"</b> só nesses dias. Sem nenhum marcado, aparece todo dia na sua categoria.</p>
+  <div class="dias">${DIASC.map((d,i)=>`<label><input type="checkbox" class="pDia" value="${i}" ${(p.dias||[]).includes(i)?'checked':''}>${d}</label>`).join('')}</div>
+  <label>Foto (link da imagem, opcional)</label><input id="pFoto" value="${esc(p.foto||'')}" placeholder="https://…">
+  <label>Ordem de exibição</label><input id="pOrdem" type="number" value="${p.ordem||0}">
+  <label class="ck"><input type="checkbox" id="pAtivo" ${p.ativo!==false?'checked':''}> Visível no cardápio</label>
+  <label class="ck"><input type="checkbox" id="pEsg" ${p.esgotado?'checked':''}> Esgotado</label>
+  <div class="row"><button class="btn pri" style="flex:1" onclick="salvarProd()">Salvar</button>${ed.id?`<button class="btn" onclick="duplicarProd('${id}')">Duplicar</button><button class="btn danger" onclick="excluirProd('${id}')">Excluir</button>`:''}</div>`);
+  edRender();
+}
+function edRender(){
+  const r=k=>ed[k].map((x,i)=>`<div class="row2"><input value="${esc(x.nome)}" placeholder="Nome" oninput="ed.${k}[${i}].nome=this.value" style="flex:2"><input value="${x.preco===''||x.preco===undefined?'':esc(String(x.preco).replace('.',','))}" inputmode="decimal" placeholder="R$" oninput="ed.${k}[${i}].preco=this.value" style="flex:1"><button class="ib" onclick="ed.${k}.splice(${i},1);edRender()">✕</button></div>`).join('');
+  $('#edVars').innerHTML=r('vars');$('#edAds').innerHTML=r('ads');
+}
+function edAdd(k){ed[k].push({nome:'',preco:''});edRender()}
+async function salvarProd(){
+  const nome=$('#pNome').value.trim();if(!nome)return toast('Informe o nome');
+  const conv=a=>a.filter(x=>String(x.nome).trim()).map(x=>({nome:String(x.nome).trim(),preco:num(x.preco)}));
+  const d={nome,descricao:$('#pDesc').value.trim(),categoria:$('#pCat').value.trim()||'Outros',preco:num($('#pPreco').value),variacoes:conv(ed.vars),adicionais:conv(ed.ads),
+    dias:[...document.querySelectorAll('.pDia:checked')].map(x=>+x.value),foto:$('#pFoto').value.trim(),ordem:+$('#pOrdem').value||0,ativo:$('#pAtivo').checked,esgotado:$('#pEsg').checked,atualizadoMs:Date.now()};
+  if(d.dias.length===7)d.dias=[];
+  if(!d.variacoes.length&&!(d.preco>0))return toast('Informe o preço ou os tamanhos');
+  const nomes=d.variacoes.map(v=>v.nome);if(new Set(nomes).size!==nomes.length)return toast('Há tamanhos com o mesmo nome');
+  try{const col=lojaRef().collection('produtos');if(ed.id)await col.doc(ed.id).update(d);else await col.add(d);fecharModal();toast('Produto salvo')}catch(e){toast('Erro: '+e.message)}
+}
+function duplicarProd(id){const p=produtos.find(x=>x.id===id);editarProd(null,{...p,nome:p.nome+' (cópia)'})}
+async function excluirProd(id){if(!confirm('Excluir este produto?'))return;try{await lojaRef().collection('produtos').doc(id).delete();fecharModal();toast('Produto excluído')}catch(e){toast('Erro: '+e.message)}}
+
+// ---------- Relatório ----------
+let relDe=null,relAte=null,relCache=[];
+function renderRelatorio(){
+  const h=hojeStr();
+  $('#t-relatorio').innerHTML=`<div class="card"><h4>📊 Relatório de vendas</h4><div class="row2"><div style="flex:1"><label>De</label><input type="date" id="rDe" value="${relDe||h}"></div><div style="flex:1"><label>Até</label><input type="date" id="rAte" value="${relAte||h}"></div></div>
+  <div class="chips"><button class="chip" onclick="relPer(0)">Hoje</button><button class="chip" onclick="relPer(1)">Ontem</button><button class="chip" onclick="relPer(7)">7 dias</button><button class="chip" onclick="relPer('mes')">Este mês</button><button class="chip" onclick="relPer('ant')">Mês passado</button></div>
+  <button class="btn pri" style="width:100%" onclick="gerarRel()">Gerar relatório</button></div><div id="relOut"></div>`;
+  if(relDe)gerarRel();
+}
+function relPer(k){const t=new Date();let a=new Date(t),b=new Date(t);if(k===1){a.setDate(t.getDate()-1);b=new Date(a)}else if(k===7)a.setDate(t.getDate()-6);else if(k==='mes')a=new Date(t.getFullYear(),t.getMonth(),1);else if(k==='ant'){a=new Date(t.getFullYear(),t.getMonth()-1,1);b=new Date(t.getFullYear(),t.getMonth(),0)}$('#rDe').value=dStr(a);$('#rAte').value=dStr(b);gerarRel()}
+async function gerarRel(){
+  relDe=$('#rDe').value;relAte=$('#rAte').value;if(relDe>relAte)return toast('Período inválido');
+  const ini=dt(relDe),fim=dt(relAte);fim.setDate(fim.getDate()+1);
+  $('#relOut').innerHTML='<p class="vazio">Calculando…</p>';
+  let ps;try{ps=(await lojaRef().collection('pedidos').where('criadoEm','>=',ini).where('criadoEm','<',fim).orderBy('criadoEm').get()).docs.map(d=>d.data())}catch(e){return $('#relOut').innerHTML='<p class="vazio">Erro: '+esc(e.message)+'</p>'}
+  relCache=ps;const ok=ps.filter(p=>p.status!=='cancelado'),canc=ps.length-ok.length;
+  const s=(a,k)=>a.reduce((t,p)=>t+(+p[k]||0),0),fat=s(ok,'total'),tx=s(ok,'taxa'),sub=s(ok,'subtotal');
+  const ent=ok.filter(p=>p.tipo==='entrega').length,aReceber=ok.filter(p=>!p.pago).reduce((t,p)=>t+(+p.total||0),0);
+  const pf={},it={},pd={};
+  ok.forEach(p=>{const f=(p.pagamento||{}).forma||'?';pf[f]=pf[f]||{n:0,v:0};pf[f].n++;pf[f].v+=+p.total||0;
+    const d=new Date(p.criadoMs).toLocaleDateString('pt-BR');pd[d]=pd[d]||{n:0,v:0};pd[d].n++;pd[d].v+=+p.total||0;
+    (p.itens||[]).forEach(i=>{const k=i.nome+(i.variacao?' ('+i.variacao+')':'');it[k]=it[k]||{q:0,v:0};it[k].q+=+i.qtd||0;it[k].v+=+i.total||0})});
+  const top=Object.entries(it).sort((a,b)=>b[1].q-a[1].q);
+  $('#relOut').innerHTML=`<div class="stats">
+   <div class="stat"><div class="mut sm">Faturamento</div><div class="v">${brl(fat)}</div></div>
+   <div class="stat"><div class="mut sm">Pedidos</div><div class="v">${ok.length}</div><div class="mut sm">${canc} cancelado(s)</div></div>
+   <div class="stat"><div class="mut sm">Ticket médio</div><div class="v">${brl(ok.length?fat/ok.length:0)}</div></div>
+   <div class="stat"><div class="mut sm">Taxas de entrega</div><div class="v">${brl(tx)}</div><div class="mut sm">${ent} entrega(s) · ${ok.length-ent} retirada(s)</div></div>
+   <div class="stat"><div class="mut sm">Produtos</div><div class="v">${brl(sub)}</div></div>
+   <div class="stat"><div class="mut sm">Não marcado como pago</div><div class="v" style="color:${aReceber?'var(--al)':'inherit'}">${brl(aReceber)}</div></div></div>
+  <div class="card"><h4>Por forma de pagamento</h4><table>${Object.entries(pf).map(([k,v])=>`<tr><td>${FORMAS[k]||k}</td><td class="r">${v.n}</td><td class="r">${brl(v.v)}</td></tr>`).join('')||'<tr><td class="mut">Sem vendas</td></tr>'}</table></div>
+  <div class="card"><h4>Mais vendidos</h4><table><tr><th>Item</th><th class="r">Qtd</th><th class="r">Total</th></tr>${top.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${v.q}</td><td class="r">${brl(v.v)}</td></tr>`).join('')}</table></div>
+  ${Object.keys(pd).length>1?`<div class="card"><h4>Por dia</h4><table>${Object.entries(pd).map(([k,v])=>`<tr><td>${k}</td><td class="r">${v.n} ped.</td><td class="r">${brl(v.v)}</td></tr>`).join('')}</table></div>`:''}
+  <button class="btn big" onclick="baixarCSV()">⬇️ Baixar planilha (CSV)</button>`;
+}
+function baixarCSV(){
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"',n=v=>String((+v||0).toFixed(2)).replace('.',',');
+  const L=[['Numero','Data','Hora','Cliente','Telefone','Tipo','Endereco','Itens','Subtotal','Taxa','Total','Pagamento','Pago','Status'].join(';')];
+  relCache.forEach(p=>{const c=p.cliente||{},d=new Date(p.criadoMs);L.push([p.numero,d.toLocaleDateString('pt-BR'),hora(p.criadoMs),q(c.nome),q(c.tel),p.tipo,q(endTxt(c)),q((p.itens||[]).map(i=>i.qtd+'x '+i.nome+(i.variacao?' ('+i.variacao+')':'')).join(', ')),n(p.subtotal),n(p.taxa),n(p.total),q(((FORMAS[(p.pagamento||{}).forma]||'').replace(/^\S+ /,''))),p.pago?'Sim':'Nao',stLabel(p)].join(';'))});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+L.join('\n')],{type:'text/csv;charset=utf-8'}));a.download=`pedidos_${lojaId}_${relDe}_a_${relAte}.csv`;a.click();
+}
+
+// ---------- Ajustes ----------
+let mpTemToken=false;
+function renderAjustes(){
+  if(!loja)return;
+  const L=loja,f=L.formas||{},dono=isDono(),link=linkCli(lojaId);
+  $('#t-ajustes').innerHTML=`<div class="card"><h4>🔗 Link de pedidos dos clientes</h4><input readonly value="${esc(link)}" onclick="this.select()"><div class="row"><button class="btn pri" onclick="copiarTxt('${link}')">Copiar</button><button class="btn" onclick="compartilhar()">Compartilhar</button><a class="btn" href="${link}" target="_blank">Abrir</a></div><div id="qrLink" class="qr"></div><p class="mut sm" style="text-align:center">Imprima o QR Code para o balcão, embalagens e panfletos. Divulgue o link no status do WhatsApp e no Instagram.</p></div>
+  ${dono?`<div class="card"><h4>🏪 Dados da marmitaria</h4>
+   <label>Nome</label><input id="aNome" value="${esc(L.nome)}">
+   <label>WhatsApp da loja (com DDD)</label><input id="aWa" inputmode="tel" value="${esc(L.whatsapp||'')}">
+   <label>Endereço (aparece para quem vai retirar)</label><input id="aEnd" value="${esc(L.endereco||'')}">
+   <label>Cidade</label><input id="aCid" value="${esc(L.cidade||'')}">
+   <label>Horário de funcionamento</label><input id="aHor" value="${esc(L.horario||'')}" placeholder="Seg a Sáb, 10h30 às 14h">
+   <label>Cor do app</label><input id="aCor" type="color" value="${esc(L.cor||'#d9480f')}"></div>
+  <div class="card"><h4>🛵 Entrega e retirada</h4>
+   <label class="ck"><input type="checkbox" id="aFaz" ${L.fazEntrega!==false?'checked':''}> Faz entrega</label>
+   <label class="ck"><input type="checkbox" id="aRet" ${L.aceitaRetirada?'checked':''}> Aceita retirada no local</label>
+   <label>Taxa de entrega (R$)</label><input id="aTaxa" inputmode="decimal" value="${fmtNum(L.taxaEntrega)}" placeholder="0 = grátis">
+   <label>Entrega grátis em pedidos a partir de (R$)</label><input id="aGratis" inputmode="decimal" value="${fmtNum(L.freteGratisAcima)}" placeholder="Vazio = nunca">
+   <label>Pedido mínimo (R$)</label><input id="aMin" inputmode="decimal" value="${fmtNum(L.pedidoMinimo)}" placeholder="Vazio = sem mínimo">
+   <label>Tempo estimado de entrega</label><input id="aTempo" value="${esc(L.tempoEntrega||'')}" placeholder="40 a 60 min"></div>
+  <div class="card"><h4>💳 Formas de pagamento</h4>
+   <label class="ck"><input type="checkbox" id="fDin" ${f.dinheiro?'checked':''}> Dinheiro na entrega/retirada (pergunta o troco)</label>
+   <label class="ck"><input type="checkbox" id="fCar" ${f.cartao?'checked':''}> Cartão na maquininha</label>
+   <label class="ck"><input type="checkbox" id="fPix" ${f.pix?'checked':''}> Pix na chave da loja (você confere e marca como pago)</label>
+   <div class="sub"><label>Chave Pix</label><input id="aPixCh" value="${esc(L.pixChave||'')}" placeholder="CPF/CNPJ, e-mail, +5516999999999 ou aleatória">
+    <label>Nome do recebedor</label><input id="aPixNome" value="${esc(L.pixNome||'')}">
+    <label>Cidade do recebedor</label><input id="aPixCid" value="${esc(L.pixCidade||'')}"></div>
+   <label class="ck"><input type="checkbox" id="fMP" ${f.pixMP?'checked':''}> Pix automático (Mercado Pago, confirma sozinho)</label>
+   <div class="sub"><label>Access Token de produção do Mercado Pago</label><input id="aMPTok" type="password" autocomplete="off" placeholder="APP_USR-…"><p class="mut sm" id="mpInfo">O dinheiro cai direto na conta Mercado Pago da marmitaria.</p></div></div>
+  <button class="btn pri big" onclick="salvarAjustes()">💾 Salvar ajustes</button>
+  <div class="card"><h4>👥 Equipe</h4><p class="mut sm">Funcionários veem pedidos e cardápio, mas não mexem nos ajustes.</p><div id="equipe" style="margin-top:8px">Carregando…</div>
+   <label>Nome</label><input id="eqNome"><label>E-mail</label><input id="eqEmail" type="email"><label>Senha inicial (mín. 6 caracteres)</label><input id="eqSenha">
+   <button class="btn" onclick="addFunc()">+ Adicionar funcionário</button></div>`:'<div class="card mut">Somente o responsável pela marmitaria altera os ajustes.</div>'}
+  <div class="card"><h4>👤 Minha conta</h4><p class="mut sm">${esc(user.email)}</p><div class="row"><button class="btn" onclick="auth.sendPasswordResetEmail(user.email).then(()=>toast('Link para trocar a senha enviado ao seu e-mail'))">Trocar senha</button><button class="btn danger" onclick="sair()">Sair</button></div></div>`;
+  new QRCode($('#qrLink'),{text:link,width:190,height:190});
+  if(dono){carregarEquipe();lojaRef().collection('privado').doc('mp').get().then(s=>{mpTemToken=s.exists&&!!s.data().accessToken;if(mpTemToken&&$('#aMPTok')){$('#aMPTok').placeholder='•••••• já cadastrado (vazio = manter)';}}).catch(()=>{})}
+}
+function compartilhar(){const l=linkCli(lojaId);if(navigator.share)navigator.share({title:loja.nome,text:`Peça sua marmita na ${loja.nome}:`,url:l}).catch(()=>{});else copiarTxt(l)}
+function sair(){localStorage.removeItem('mm_super_loja');auth.signOut()}
+async function salvarAjustes(){
+  const g=id=>$('#'+id).value.trim(),c=id=>$('#'+id).checked;
+  const d={nome:g('aNome'),whatsapp:g('aWa'),endereco:g('aEnd'),cidade:g('aCid'),horario:g('aHor'),cor:g('aCor'),fazEntrega:c('aFaz'),aceitaRetirada:c('aRet'),
+    taxaEntrega:num(g('aTaxa')),freteGratisAcima:num(g('aGratis')),pedidoMinimo:num(g('aMin')),tempoEntrega:g('aTempo'),
+    formas:{dinheiro:c('fDin'),cartao:c('fCar'),pix:c('fPix'),pixMP:c('fMP')},pixChave:g('aPixCh'),pixNome:g('aPixNome'),pixCidade:g('aPixCid')};
+  const tok=g('aMPTok');
+  if(!d.nome)return toast('Informe o nome');
+  if(!d.fazEntrega&&!d.aceitaRetirada)return toast('Marque entrega e/ou retirada');
+  if(!Object.values(d.formas).some(Boolean))return toast('Marque ao menos uma forma de pagamento');
+  if(d.formas.pix&&(!d.pixChave||!d.pixNome))return toast('Preencha a chave Pix e o nome do recebedor');
+  if(d.formas.pixMP&&!tok&&!mpTemToken)return toast('Informe o Access Token do Mercado Pago');
+  try{await lojaRef().update(d);if(tok){await lojaRef().collection('privado').doc('mp').set({accessToken:tok,atualizadoMs:Date.now()});mpTemToken=true;$('#aMPTok').value=''}toast('Ajustes salvos ✅')}catch(e){toast('Erro: '+e.message)}
+}
+async function carregarEquipe(){
+  try{const q=await db.collection(USERS).where('marmitaId','==',lojaId).get();
+    $('#equipe').innerHTML=q.docs.map(d=>{const u=d.data();return `<div class="pr-row" style="cursor:default"><div style="flex:1;min-width:0"><b>${esc(u.nome||d.id)}</b><div class="mut sm">${esc(d.id)} · ${u.papel==='func'?'Funcionário':'Responsável'}</div></div>${u.papel==='func'?`<button class="ib" onclick="remFunc('${esc(d.id)}')">✕</button>`:''}</div>`}).join('')||'<p class="mut sm">Ninguém cadastrado.</p>'}
+  catch(e){$('#equipe').innerHTML='<p class="mut sm">Não foi possível carregar a equipe.</p>'}
+}
+async function criarLogin(email,senha){
+  /* cria o login sem deslogar quem está usando o painel; se o e-mail já tiver conta, mantém a senha dele */
+  const sec=firebase.apps.find(a=>a.name==='sec')||firebase.initializeApp(FIREBASE_CONFIG,'sec'),sa=sec.auth();
+  await sa.setPersistence(firebase.auth.Auth.Persistence.NONE);
+  try{await sa.createUserWithEmailAndPassword(email,senha);await sa.signOut();return true}
+  catch(e){if(e.code==='auth/email-already-in-use')return false;throw e}
+}
+async function addFunc(){
+  const nome=$('#eqNome').value.trim(),email=$('#eqEmail').value.trim().toLowerCase(),senha=$('#eqSenha').value;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return toast('E-mail inválido');
+  if(senha.length<6)return toast('Senha com pelo menos 6 caracteres');
+  try{
+    const nova=await criarLogin(email,senha);
+    try{await db.collection(USERS).doc(email).set({marmitaId:lojaId,nome,papel:'func',criadoMs:Date.now()})}
+    catch(e){return toast('Este e-mail já está vinculado a uma marmitaria')}
+    ['eqNome','eqEmail','eqSenha'].forEach(i=>$('#'+i).value='');
+    toast(nova?'Funcionário adicionado. Passe o e-mail e a senha para ele.':'Funcionário adicionado (ele já tinha login: usa a senha que já tem).');
+    carregarEquipe();
+  }catch(e){toast('Erro: '+(e.code==='auth/weak-password'?'senha fraca':e.message))}
+}
+async function remFunc(email){if(!confirm('Remover o acesso deste funcionário?'))return;try{await db.collection(USERS).doc(email).delete();carregarEquipe()}catch(e){toast('Erro: '+e.message)}}
+
+// ---------- Suporte (somente o administrador escolhe qual painel abrir; cadastro fica no Administrador Apps) ----------
+async function renderAdmin(){
+  const el=$('#t-admin');if(!isSuper){el.innerHTML='';return}
+  el.innerHTML=`<div class="card"><h4>🛡️ Acesso de suporte</h4><p class="mut sm">Cadastro, mensalidade e suspensão das marmitarias ficam no <b>Administrador Apps</b>. Aqui você só escolhe qual painel abrir.</p></div><div id="admList"><p class="vazio">Carregando…</p></div>`;
+  try{const q=await db.collection('marmitarias').get();
+    $('#admList').innerHTML=q.docs.sort((a,b)=>String(a.data().nome).localeCompare(b.data().nome)).map(d=>{const m=d.data();return `<div class="pr-row" onclick="entrarLoja('${esc(d.id)}')"><div style="flex:1;min-width:0"><b>${esc(m.nome)}</b><div class="mut sm">${esc(d.id)} · ${esc(m.donoEmail||'')}${d.id===lojaId?' · <b>aberta agora</b>':''}</div></div><span class="tag ${m.status==='ativo'?'pago':'t-cancelado'}">${m.status==='ativo'?'Ativa':'Suspensa'}</span></div>`}).join('')||'<p class="vazio">Nenhuma marmitaria. Crie pelo Administrador Apps.</p>'}
+  catch(e){$('#admList').innerHTML='<p class="vazio">Erro: '+esc(e.message)+'</p>'}
+}
+function entrarLoja(id){localStorage.setItem('mm_super_loja',id);history.replaceState(null,'',location.pathname+'?m='+encodeURIComponent(id));abrirLoja(id)}
+
+// ---------- PWA ----------
+(function(){try{const ic=s=>{const c=document.createElement('canvas');c.width=c.height=s;const x=c.getContext('2d');x.fillStyle='#d9480f';x.fillRect(0,0,s,s);x.font=`${Math.round(s*.5)}px serif`;x.textAlign='center';x.textBaseline='middle';x.fillText('🍱',s/2,s*.46);x.fillStyle='#fff';x.font=`bold ${Math.round(s*.13)}px sans-serif`;x.fillText('PAINEL',s/2,s*.84);return c.toDataURL('image/png')};
+const i1=ic(192),i2=ic(512),base=location.origin+location.pathname;
+$('#mf').href=URL.createObjectURL(new Blob([JSON.stringify({name:'Painel da Marmitaria',short_name:'Marmitaria',start_url:base,scope:base,display:'standalone',background_color:'#f6f4f2',theme_color:'#d9480f',icons:[{src:i1,sizes:'192x192',type:'image/png'},{src:i2,sizes:'512x512',type:'image/png'}]})],{type:'application/manifest+json'}));
+$('#fav').href=i1;$('#ati').href=i1}catch(e){}})();
+</script>
+</body>
+</html>
