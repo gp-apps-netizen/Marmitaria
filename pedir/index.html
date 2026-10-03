@@ -408,6 +408,7 @@ function renderTrack(p){
   if(canc)h+=`<p class="alerta">❌ Pedido cancelado${p.motivoCancel?': '+esc(p.motivoCancel):''}</p>`;
   else h+=`<ol class="steps">${et.map((e,i)=>`<li class="${i<idx||(p.status==='entregue')?'done':i===idx?'cur':''}"><span></span>${e[1]}${p.statusMs&&p.statusMs[e[0]]?`<small>${hora(p.statusMs[e[0]])}</small>`:''}</li>`).join('')}</ol>`;
   if(p.status==='novo')h+='<p class="mut sm" style="text-align:center">Aguardando a loja confirmar seu pedido…</p>';
+  if(p.entregador&&p.status==='saiu'&&p.tipo==='entrega')h+=`<p class="encinfo" style="margin:6px 0 0;text-align:center">🛵 ${esc(String(p.entregador.nome||'').split(' ')[0])} saiu com seu pedido!</p>`;
   h+='</div>'+blocoPagamento(p);
   h+=`<div class="tcard"><h4>Resumo</h4>${(p.itens||[]).map(i=>`<div class="li"><span>${i.qtd}× ${esc(i.nome)}${i.variacao?' ('+esc(i.variacao)+')':''}${(i.escolhas||[]).length?'<br><small class="mut">'+esc(fmtEscolhas(i))+'</small>':''}${i.adicionais&&i.adicionais.length?'<br><small class="mut">+ '+i.adicionais.map(a=>esc(a.nome)).join(', ')+'</small>':''}${i.obs?'<br><small class="mut">Obs: '+esc(i.obs)+'</small>':''}</span><span>${brl(i.total)}</span></div>`).join('')}
   <div class="tot"><div><span>Subtotal</span><span>${brl(p.subtotal)}</span></div>${p.tipo==='entrega'?`<div><span>Entrega</span><span>${p.taxa?brl(p.taxa):'Grátis'}</span></div>`:''}<div class="big"><span>Total</span><span>${brl(p.total)}</span></div></div>
