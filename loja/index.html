@@ -90,6 +90,14 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 td,th{padding:7px 4px;border-bottom:1px solid var(--bd);text-align:left}
 td.r,th.r{text-align:right}
 .qr{display:flex;justify-content:center;margin:12px 0}
+.tlogo{width:38px;height:38px;border-radius:10px;object-fit:contain;background:#fff;flex-shrink:0;display:none}
+.fotobox{display:flex;gap:10px;align-items:center;margin:4px 0 8px}
+.fotoprev{width:84px;height:84px;border-radius:12px;object-fit:cover;background:#f1f3f5;border:1px dashed var(--bd);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--mut);flex-shrink:0;overflow:hidden}
+.fotoprev img{width:100%;height:100%;object-fit:cover}
+.logoprev{width:96px;height:96px;border-radius:16px;background:#fff;border:1px dashed var(--bd);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden;flex-shrink:0}
+.logoprev img{width:100%;height:100%;object-fit:contain}
+.seg2 label.ck{border:1px solid var(--bd);border-radius:10px;padding:9px 10px;margin:0 0 6px}
+.pthumb{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:50;align-items:flex-end;justify-content:center}
 #modal.on{display:flex}
 .sheet{background:var(--card);width:100%;max-width:600px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));position:relative}
@@ -116,7 +124,7 @@ td.r,th.r{text-align:right}
 
 <div id="app" style="display:none">
   <header class="top">
-    <div style="min-width:0"><div class="tn" id="tNome">Marmitaria</div><div class="mut sm" id="tSub"></div></div>
+    <div style="min-width:0;display:flex;align-items:center;gap:10px"><img id="tLogo" class="tlogo" alt=""><div style="min-width:0"><div class="tn" id="tNome">Marmitaria</div><div class="mut sm" id="tSub"></div></div></div>
     <div class="tr">
       <button class="ib" id="btnSom" onclick="toggleSom()" title="Som de novos pedidos">🔕</button>
       <label class="sw" title="Aberto para pedidos"><input type="checkbox" id="swAberto" onchange="setAberto(this.checked)"><span></span></label>
@@ -127,6 +135,7 @@ td.r,th.r{text-align:right}
     <section id="t-pedidos" class="tab"></section>
     <section id="t-cardapio" class="tab"></section>
     <section id="t-relatorio" class="tab"></section>
+    <section id="t-estoque" class="tab"></section>
     <section id="t-ajustes" class="tab"></section>
     <section id="t-admin" class="tab"></section>
   </main>
@@ -134,6 +143,7 @@ td.r,th.r{text-align:right}
     <button data-t="pedidos" onclick="irTab('pedidos')"><i>🧾</i>Pedidos<span class="bdg" id="bdgNovos"></span></button>
     <button data-t="cardapio" onclick="irTab('cardapio')"><i>🍱</i>Cardápio</button>
     <button data-t="relatorio" onclick="irTab('relatorio')"><i>📊</i>Relatório</button>
+    <button data-t="estoque" onclick="irTab('estoque')"><i>📦</i>Estoque<span class="bdg" id="bdgEst"></span></button>
     <button data-t="ajustes" onclick="irTab('ajustes')"><i>⚙️</i>Ajustes</button>
     <button data-t="admin" id="navAdmin" style="display:none" onclick="irTab('admin')"><i>🛡️</i>Suporte</button>
   </nav>
@@ -180,6 +190,7 @@ const linkCli=id=>baseApp()+'pedir/?m='+id;
 
 firebase.initializeApp(FIREBASE_CONFIG);
 const auth=firebase.auth(),db=firebase.firestore();
+let estoque={},insumos=[],movs=[],encomendas=[],pedA=[],pedB=[],pedC=[],unsubPedB=null,unsubPedC=null;
 let user=null,perfil=null,isSuper=false,lojaId=null,loja=null,produtos=[],pedidos=[],unsub=[],unsubPed=null,tabAtual='pedidos',diaPedidos=hojeStr(),filtro='ativos',primeira=true;
 const isDono=()=>isSuper||(perfil&&perfil.marmitaId===lojaId&&(perfil.papel||'dono')==='dono');
 const USERS='usuariosMarmita';
@@ -190,7 +201,7 @@ const lojaRef=()=>db.collection('marmitarias').doc(lojaId);
 function telaLogin(msg,sair){$('#carregando').style.display='none';$('#app').style.display='none';$('#login').style.display='';$('#lMsg').textContent=msg||'';$('#lSair').style.display=sair?'':'none'}
 async function entrar(){const e=$('#lEmail').value.trim(),s=$('#lSenha').value;if(!e||!s)return toast('Informe e-mail e senha');try{await auth.signInWithEmailAndPassword(e,s)}catch(err){toast(['auth/invalid-credential','auth/wrong-password','auth/user-not-found','auth/invalid-login-credentials'].includes(err.code)?'E-mail ou senha incorretos':'Erro: '+err.message)}}
 async function esqueci(){const e=$('#lEmail').value.trim();if(!e)return toast('Digite seu e-mail primeiro');try{await auth.sendPasswordResetEmail(e);toast('Enviamos um link para '+e)}catch(err){toast('Erro: '+err.message)}}
-function limpar(){unsub.forEach(f=>{try{f()}catch(e){}});unsub=[];if(unsubPed){unsubPed();unsubPed=null}pedidos=[];produtos=[];loja=null}
+function limpar(){unsub.forEach(f=>{try{f()}catch(e){}});unsub=[];[unsubPed,unsubPedB,unsubPedC].forEach(f=>{if(f)f()});unsubPed=unsubPedB=unsubPedC=null;pedidos=[];encomendas=[];cardapios={};cdEd=null;cdData=null;produtos=[];loja=null;estoque={};insumos=[];movs=[]}
 
 auth.onAuthStateChanged(async u=>{
   limpar();user=u;perfil=null;lojaId=null;
@@ -212,11 +223,19 @@ function abrirLoja(id){
     if(!s.exists){toast('Marmitaria não encontrada');if(isSuper){localStorage.removeItem('mm_super_loja');lojaId=null;irTab('admin')}return}
     loja={id:s.id,...s.data()};renderTopo();if(tabAtual==='pedidos')renderPedidos();
   },e=>toast('Sem permissão para esta marmitaria')));
-  unsub.push(lojaRef().collection('produtos').onSnapshot(q=>{produtos=q.docs.map(d=>({id:d.id,...d.data()}));if(tabAtual==='cardapio')renderCardapio()}));
+  unsub.push(lojaRef().collection('produtos').onSnapshot(q=>{produtos=q.docs.map(d=>({id:d.id,...d.data()}));if(tabAtual==='cardapio')renderCardapio();if(tabAtual==='estoque')renderEstoque();checarProducao()}));
+  unsub.push(lojaRef().collection('estoque').onSnapshot(q=>{estoque={};q.docs.forEach(d=>estoque[d.id]=d.data());badgeEstoque();if(tabAtual==='estoque')renderEstoque()},e=>console.error(e)));
+  unsub.push(lojaRef().collection('insumos').onSnapshot(q=>{insumos=q.docs.map(d=>({id:d.id,...d.data()}));badgeEstoque();if(tabAtual==='estoque')renderEstoque()},e=>console.error(e)));
+  unsub.push(lojaRef().collection('cardapios').where('data','>=',somaDias(hojeStr(),-8)).onSnapshot(q=>{
+    cardapios={};q.docs.forEach(d=>cardapios[d.id]=d.data());
+    if(tabAtual==='cardapio'&&cdAba==='dia'&&!(cdEd&&cdEd.mexido)){cdEd=null;renderDia()}
+    checarProducao();
+  },e=>console.error(e)));
   diaPedidos=hojeStr();ouvirPedidos();irTab('pedidos');
 }
 function renderTopo(){
   $('#tNome').textContent=loja?loja.nome:'Administração';
+  const lg=$('#tLogo');if(loja&&loja.logo){lg.src=loja.logo;lg.style.display='block'}else{lg.removeAttribute('src');lg.style.display='none'}
   $('#tSub').textContent=(isSuper?'Administrador (suporte)':isDono()?'Responsável':'Funcionário')+(loja&&loja.status!=='ativo'?' · SUSPENSA':'');
   $('#swAberto').checked=!!(loja&&loja.aberto);$('#swAberto').disabled=!loja;
   $('#lblAberto').textContent=loja&&loja.aberto?'Aberto':'Fechado';
@@ -226,7 +245,7 @@ function irTab(t){
   if(!lojaId&&t!=='admin'){toast('Escolha uma marmitaria na aba Suporte');t='admin'}
   tabAtual=t;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==='t-'+t));
   document.querySelectorAll('.bn button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  ({pedidos:renderPedidos,cardapio:renderCardapio,relatorio:renderRelatorio,ajustes:renderAjustes,admin:renderAdmin})[t]();
+  ({pedidos:renderPedidos,cardapio:renderCardapio,relatorio:renderRelatorio,estoque:renderEstoque,ajustes:renderAjustes,admin:renderAdmin})[t]();
   window.scrollTo(0,0);
 }
 async function setAberto(v){try{await lojaRef().update({aberto:v});toast(v?'Loja ABERTA para pedidos':'Loja FECHADA para pedidos')}catch(e){toast('Erro: '+e.message);renderTopo()}}
@@ -245,17 +264,25 @@ function alertaNovo(p){if(somOn)beep();if(navigator.vibrate)navigator.vibrate([3
 
 // ---------- Pedidos ----------
 function ouvirPedidos(){
-  if(unsubPed)unsubPed();primeira=true;
-  const ini=dt(diaPedidos),fim=dt(diaPedidos);fim.setDate(fim.getDate()+1);
-  unsubPed=lojaRef().collection('pedidos').where('criadoEm','>=',ini).where('criadoEm','<',fim).orderBy('criadoEm','desc').onSnapshot(q=>{
-    const novos=[];q.docChanges().forEach(c=>{if(c.type==='added'&&!primeira&&c.doc.data().status==='novo')novos.push(c.doc.data())});
-    pedidos=q.docs.map(d=>({id:d.id,...d.data()}));primeira=false;
-    if(novos.length)alertaNovo(novos[0]);
-    const n=pedidos.filter(p=>p.status==='novo').length;const b=$('#bdgNovos');b.style.display=n?'':'none';b.textContent=n;
-    document.title=(n?`(${n}) `:'')+'Painel da Marmitaria';
-    if(tabAtual==='pedidos')renderPedidos();
-  },e=>{console.error(e);toast('Erro ao carregar pedidos: '+e.message)});
+  [unsubPed,unsubPedB,unsubPedC].forEach(f=>{if(f)f()});unsubPed=unsubPedB=unsubPedC=null;pedA=pedB=pedC=[];
+  const ini=dt(diaPedidos),fim=dt(diaPedidos);fim.setDate(fim.getDate()+1);const col=lojaRef().collection('pedidos'),dia=diaPedidos;
+  const ouvir=(q,set,alerta)=>{let first=true;return q.onSnapshot(sn=>{
+    const novos=[];if(!first)sn.docChanges().forEach(c=>{const d=c.doc.data();if(c.type==='added'&&d.status==='novo'&&alerta(d))novos.push(d)});first=false;
+    set(sn.docs.map(d=>({id:d.id,...d.data()})));juntarPedidos();if(novos.length)alertaNovo(novos[0]);
+  },e=>{console.error(e);toast('Erro ao carregar pedidos: '+e.message)})};
+  unsubPed=ouvir(col.where('criadoEm','>=',ini).where('criadoEm','<',fim).orderBy('criadoEm','desc'),x=>pedA=x,d=>!d.paraData);
+  unsubPedB=ouvir(col.where('paraData','==',dia),x=>pedB=x,()=>true);
+  if(dia===hojeStr())unsubPedC=ouvir(col.where('paraData','>',dia),x=>pedC=x,()=>true);
 }
+function juntarPedidos(){
+  const m=new Map();[...pedA.filter(p=>!p.paraData||p.paraData===diaPedidos),...pedB].forEach(p=>m.set(p.id,p));
+  pedidos=[...m.values()].sort((a,b)=>(b.criadoMs||0)-(a.criadoMs||0));
+  encomendas=pedC.slice().sort((a,b)=>String(a.paraData).localeCompare(b.paraData)||(a.criadoMs||0)-(b.criadoMs||0));
+  const n=pedidos.filter(p=>p.status==='novo').length+encomendas.filter(p=>p.status==='novo').length,bd=$('#bdgNovos');bd.style.display=n?'':'none';bd.textContent=n;
+  document.title=(n?`(${n}) `:'')+'Painel da Marmitaria';
+  if(tabAtual==='pedidos')renderPedidos();
+}
+const achar=id=>pedidos.find(x=>x.id===id)||encomendas.find(x=>x.id===id);
 /* Suspensão e aviso de mensalidade (dados definidos no Administrador Apps) */
 function avisos(){
   if(!loja)return '';
@@ -277,22 +304,24 @@ function renderPedidos(){
   const el=$('#t-pedidos');if(!lojaId)return;
   const at=['novo','preparo','saiu'],cont={ativos:0};
   pedidos.forEach(p=>{cont[p.status]=(cont[p.status]||0)+1;if(at.includes(p.status))cont.ativos++});
-  const lista=pedidos.filter(p=>filtro==='todos'||(filtro==='ativos'?at.includes(p.status):p.status===filtro));
+  if(filtro==='enc'&&diaPedidos!==hojeStr())filtro='ativos';
+  const encAb=encomendas.filter(p=>p.status!=='cancelado');cont.enc=encAb.length;
+  const lista=filtro==='enc'?encomendas:pedidos.filter(p=>filtro==='todos'||(filtro==='ativos'?at.includes(p.status):p.status===filtro));
   const fat=pedidos.filter(p=>p.status!=='cancelado').reduce((s,p)=>s+(+p.total||0),0);
-  el.innerHTML=`${avisos()}${loja&&!loja.aberto&&diaPedidos===hojeStr()?'<div class="card" style="background:#fff5f5;border-color:#ffc9c9"><b>🔒 A loja está FECHADA.</b> <span class="mut sm">Ligue a chave no topo para receber pedidos.</span></div>':''}
+  el.innerHTML=`${avisos()}${avisoEstoque()}${loja&&!loja.aberto&&diaPedidos===hojeStr()?'<div class="card" style="background:#fff5f5;border-color:#ffc9c9"><b>🔒 A loja está FECHADA.</b> <span class="mut sm">Ligue a chave no topo para receber pedidos.</span></div>':''}
   ${!somOn?'<div class="card" style="background:#fff9db;border-color:#ffe066" onclick="toggleSom()"><b>🔔 Toque aqui para ligar o som de novos pedidos</b></div>':''}
   <div class="bar1"><input type="date" value="${diaPedidos}" onchange="diaPedidos=this.value;ouvirPedidos()"><div class="mut sm" style="text-align:right">${pedidos.length} pedido(s)<br><b>${brl(fat)}</b></div></div>
-  <div class="chips">${[['ativos','Em aberto'],['novo','Novos'],['preparo','Preparo'],['saiu','Saiu/Pronto'],['entregue','Entregues'],['cancelado','Cancelados'],['todos','Todos']].map(([k,l])=>`<button class="chip ${filtro===k?'on':''}" onclick="filtro='${k}';renderPedidos()">${l}${k!=='todos'&&cont[k]?` <b>${cont[k]}</b>`:''}</button>`).join('')}</div>
-  ${lista.length?lista.map(cardPedido).join(''):'<p class="vazio">Nenhum pedido aqui.</p>'}`;
+  <div class="chips">${[['ativos','Em aberto'],...(diaPedidos===hojeStr()?[['enc','📅 Encomendas']]:[]),['novo','Novos'],['preparo','Preparo'],['saiu','Saiu/Pronto'],['entregue','Entregues'],['cancelado','Cancelados'],['todos','Todos']].map(([k,l])=>`<button class="chip ${filtro===k?'on':''}" onclick="filtro='${k}';renderPedidos()">${l}${k!=='todos'&&cont[k]?` <b>${cont[k]}</b>`:''}</button>`).join('')}</div>
+  ${filtro==='enc'?'<p class="mut sm" style="margin-bottom:8px">Encomendas para os próximos dias. O estoque delas baixa quando a produção do dia for lançada (ao publicar o cardápio daquele dia com as quantidades).</p>':''}${lista.length?lista.map(cardPedido).join(''):'<p class="vazio">'+(filtro==='enc'?'Nenhuma encomenda para os próximos dias.':'Nenhum pedido aqui.')+'</p>'}`;
 }
 function cardPedido(p){
   const c=p.cliente||{},pg=p.pagamento||{};
   const prox={novo:[['preparo','✅ Aceitar']],preparo:[['saiu',p.tipo==='entrega'?'🛵 Saiu p/ entrega':'📦 Pronto p/ retirada']],saiu:[['entregue',p.tipo==='entrega'?'✔️ Entregue':'✔️ Retirado']]}[p.status]||[];
   return `<div class="pc st-${p.status}">
-  <div class="pch"><div><span class="pn">#${p.numero||'?'}</span> <span class="tag t-${p.status}">${stLabel(p)}</span>${p.pago?' <span class="tag pago">Pago</span>':''}</div><span class="mut sm">${hora(p.criadoMs)}</span></div>
+  <div class="pch"><div><span class="pn">#${p.numero||'?'}</span> <span class="tag t-${p.status}">${stLabel(p)}</span>${p.pago?' <span class="tag pago">Pago</span>':''}${p.encomenda?` <span class="tag t-saiu">📅 ${p.paraData===hojeStr()?'p/ hoje':'p/ '+rotDia(p.paraData)}</span>`:''}</div><span class="mut sm">${hora(p.criadoMs)}</span></div>
   <div class="pcl"><b>${esc(c.nome)}</b> · <a href="tel:${esc(c.tel)}">${fmtTel(c.tel)}</a></div>
   <div class="mut sm">${p.tipo==='entrega'?'🛵 '+esc(endTxt(c)):'🏪 Retirada no local'}</div>
-  <ul class="its">${(p.itens||[]).map(i=>`<li><b>${i.qtd}×</b> ${esc(i.nome)}${i.variacao?' ('+esc(i.variacao)+')':''}${i.adicionais&&i.adicionais.length?'<br><small>+ '+i.adicionais.map(a=>esc(a.nome)).join(', ')+'</small>':''}${i.obs?'<div class="obs">⚠️ '+esc(i.obs)+'</div>':''}</li>`).join('')}</ul>
+  <ul class="its">${(p.itens||[]).map(i=>`<li><b>${i.qtd}×</b> ${esc(i.nome)}${i.variacao?' ('+esc(i.variacao)+')':''}${(i.escolhas||[]).length?'<br><small>'+esc(fmtEscolhas(i))+'</small>':''}${i.adicionais&&i.adicionais.length?'<br><small>+ '+i.adicionais.map(a=>esc(a.nome)).join(', ')+'</small>':''}${i.obs?'<div class="obs">⚠️ '+esc(i.obs)+'</div>':''}</li>`).join('')}</ul>
   ${p.obs?`<div class="obs">📝 ${esc(p.obs)}</div>`:''}
   <div class="pct"><span>${FORMAS[pg.forma]||''}${pg.trocoPara?` · troco p/ ${brl(pg.trocoPara)} <b style="font-size:13px">(levar ${brl(pg.trocoPara-p.total)})</b>`:''}</span><b>${brl(p.total)}</b></div>
   ${p.tipo==='entrega'?`<div class="mut sm">Itens ${brl(p.subtotal)} + entrega ${brl(p.taxa)}</div>`:''}
@@ -311,16 +340,23 @@ function waCliente(p){
     entregue:`Olá, ${n}! Obrigado pelo pedido #${p.numero} na ${L}. Bom apetite! 😋`,cancelado:`Olá, ${n}. Infelizmente seu pedido #${p.numero} na ${L} foi cancelado${p.motivoCancel?' ('+p.motivoCancel+')':''}.`}[p.status]||'';
   return waLink(p.cliente.tel,m+(p.status!=='cancelado'?`\nAcompanhe: ${lnk}`:''));
 }
-async function mudarStatus(id,s){try{await lojaRef().collection('pedidos').doc(id).update({status:s,['statusMs.'+s]:Date.now()})}catch(e){toast('Erro: '+e.message)}}
-async function cancelarPed(id){const m=prompt('Cancelar o pedido? Motivo (opcional):');if(m===null)return;try{await lojaRef().collection('pedidos').doc(id).update({status:'cancelado','statusMs.cancelado':Date.now(),motivoCancel:m.trim(),canceladoPor:'loja'})}catch(e){toast('Erro: '+e.message)}}
-async function togglePago(id){const p=pedidos.find(x=>x.id===id);try{await lojaRef().collection('pedidos').doc(id).update({pago:!p.pago})}catch(e){toast('Erro: '+e.message)}}
+async function mudarStatus(id,s){
+  const p=achar(id);
+  try{
+    const b=db.batch(),upd={status:s,['statusMs.'+s]:Date.now()};
+    if(p&&s!=='cancelado'&&!p.estoqueBaixado&&!(p.paraData&&p.paraData>hojeStr())&&movimentarEstoque(b,p,-1))upd.estoqueBaixado=true;
+    b.update(lojaRef().collection('pedidos').doc(id),upd);await b.commit();
+  }catch(e){toast('Erro: '+e.message)}
+}
+async function cancelarPed(id){const m=prompt('Cancelar o pedido? Motivo (opcional):');if(m===null)return;const p=achar(id);try{const b=db.batch(),upd={status:'cancelado','statusMs.cancelado':Date.now(),motivoCancel:m.trim(),canceladoPor:'loja'};if(p&&p.estoqueBaixado){movimentarEstoque(b,p,1);upd.estoqueBaixado=false}b.update(lojaRef().collection('pedidos').doc(id),upd);await b.commit()}catch(e){toast('Erro: '+e.message)}}
+async function togglePago(id){const p=achar(id);try{await lojaRef().collection('pedidos').doc(id).update({pago:!p.pago})}catch(e){toast('Erro: '+e.message)}}
 function imprimir(id){
-  const p=pedidos.find(x=>x.id===id),c=p.cliente||{},pg=p.pagamento||{};
+  const p=achar(id),c=p.cliente||{},pg=p.pagamento||{};
   const w=window.open('','_blank','width=380,height=640');if(!w)return toast('Permita pop-ups para imprimir');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pedido ${p.numero}</title><style>body{font-family:monospace;width:58mm;font-size:12px;margin:0;padding:4px}h1{font-size:18px;text-align:center;margin:4px 0}h2{font-size:13px;text-align:center;margin:0}hr{border:0;border-top:1px dashed #000;margin:6px 0}.r{display:flex;justify-content:space-between;gap:6px}small{font-size:11px}@page{margin:0}</style></head><body>
-  <h2>${esc(loja.nome)}</h2><h1>PEDIDO #${p.numero}</h1><div style="text-align:center">${new Date(p.criadoMs).toLocaleString('pt-BR')}</div><hr>
+  <h2>${esc(loja.nome)}</h2><h1>PEDIDO #${p.numero}</h1>${p.encomenda?`<div style="text-align:center"><b>ENCOMENDA PARA ${p.paraData.split('-').reverse().join('/')}</b></div>`:''}<div style="text-align:center">${new Date(p.criadoMs).toLocaleString('pt-BR')}</div><hr>
   <b>${p.tipo==='entrega'?'ENTREGA':'RETIRADA'}</b><br>${esc(c.nome)} – ${fmtTel(c.tel)}${p.tipo==='entrega'?'<br>'+esc(endTxt(c)):''}<hr>
-  ${(p.itens||[]).map(i=>`<div class="r"><span>${i.qtd}x ${esc(i.nome)}${i.variacao?' ('+esc(i.variacao)+')':''}</span><span>${(+i.total).toFixed(2)}</span></div>${i.adicionais&&i.adicionais.length?'<small>+ '+i.adicionais.map(a=>esc(a.nome)).join(', ')+'</small><br>':''}${i.obs?'<small>OBS: '+esc(i.obs)+'</small><br>':''}`).join('')}
+  ${(p.itens||[]).map(i=>`<div class="r"><span>${i.qtd}x ${esc(i.nome)}${i.variacao?' ('+esc(i.variacao)+')':''}</span><span>${(+i.total).toFixed(2)}</span></div>${(i.escolhas||[]).length?'<small>'+esc(fmtEscolhas(i))+'</small><br>':''}${i.adicionais&&i.adicionais.length?'<small>+ '+i.adicionais.map(a=>esc(a.nome)).join(', ')+'</small><br>':''}${i.obs?'<small>OBS: '+esc(i.obs)+'</small><br>':''}`).join('')}
   <hr><div class="r"><span>Subtotal</span><span>${(+p.subtotal).toFixed(2)}</span></div>${p.tipo==='entrega'?`<div class="r"><span>Entrega</span><span>${(+p.taxa).toFixed(2)}</span></div>`:''}<div class="r"><b>TOTAL</b><b>R$ ${(+p.total).toFixed(2)}</b></div>
   <div>Pagamento: ${(FORMAS[pg.forma]||'').replace(/^\S+ /,'')}${p.pago?' (PAGO)':''}</div>${pg.trocoPara?`<div>Troco p/ R$ ${(+pg.trocoPara).toFixed(2)} → levar R$ ${(pg.trocoPara-p.total).toFixed(2)}</div>`:''}
   ${p.obs?'<hr>OBS: '+esc(p.obs):''}<hr><div style="text-align:center">Obrigado!</div>
@@ -329,43 +365,239 @@ function imprimir(id){
 }
 
 // ---------- Cardápio ----------
-let ed=null;
-const diasTxt=d=>!d||!d.length?'Todos os dias':d.length===7?'Todos os dias':[...d].sort().map(i=>DIASC[i]).join(', ');
+// Produto: fixo (aparece todo dia) ou prato do dia (doDia: entra pelo Cardápio do dia; dias = dias habituais).
+// Monte sua marmita: montavel + grupos[{nome,min,max,opcoes[{nome,extra}]}]; as opções de cada dia ficam no cardápio do dia (ops).
+// cardapios/{AAAA-MM-DD}: {data, publicado, itens[pid], qtd{pid:n}, ops{pid:{grupo:[opções]}}, aviso, estoqueAplicado}
+let ed=null,cdAba='dia',cdData=null,cdEd=null,cardapios={};
+const DIASL=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const diasTxt=d=>!d||!d.length||d.length===7?'Todos os dias':[...d].sort().map(i=>DIASC[i]).join(', ');
 const precoTxt=p=>(p.variacoes||[]).length?p.variacoes.map(v=>`${v.nome} ${brl(v.preco)}`).join(' · '):brl(p.preco);
+const ehDoDia=p=>p.doDia===true||(p.doDia===undefined&&(p.dias||[]).length>0&&p.dias.length<7);
+const somaDias=(s,n)=>{const d=dt(s);d.setDate(d.getDate()+n);return dStr(d)};
+const rotDia=s=>{const h=hojeStr();if(s===h)return 'Hoje';if(s===somaDias(h,1))return 'Amanhã';const d=dt(s);return DIASC[d.getDay()]+' '+String(d.getDate()).padStart(2,'0')};
+const dataLonga=s=>{const d=dt(s);return DIASL[d.getDay()]+', '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')};
+function fmtEscolhas(i){const g={};(i.escolhas||[]).forEach(e=>{(g[e.g]=g[e.g]||[]).push(e.nome)});return Object.entries(g).map(([k,v])=>`${k}: ${v.join(', ')}`).join(' · ')}
+
 function renderCardapio(){
   if(!loja)return;
-  const el=$('#t-cardapio'),cats={};
-  produtos.forEach(p=>{const c=p.categoria||'Outros';(cats[c]=cats[c]||[]).push(p)});
+  const el=$('#t-cardapio');
+  const abas=`<div class="chips"><button class="chip ${cdAba==='dia'?'on':''}" onclick="cdAba='dia';renderCardapio()">📅 Cardápio do dia</button><button class="chip ${cdAba==='prod'?'on':''}" onclick="cdAba='prod';renderCardapio()">🍱 Produtos</button></div>`;
+  if(cdAba==='dia'){el.innerHTML=abas+'<div id="cdBox"></div>';renderDia();return}
+  const cats={};produtos.forEach(p=>{const c=p.categoria||'Outros';(cats[c]=cats[c]||[]).push(p)});
   const ord=['Marmitas','Pratos','Porções','Bebidas','Sobremesas','Adicionais'];
   const nomes=Object.keys(cats).sort((a,b)=>{const ia=ord.indexOf(a),ib=ord.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b)});
   const esg=produtos.filter(p=>p.esgotado).length;
-  el.innerHTML=`<div class="card"><h4>📣 Aviso do dia</h4><p class="mut sm">Aparece no topo do cardápio do cliente. Ex.: "Hoje tem feijoada! 🍲"</p><textarea id="avisoDia" rows="2">${esc(loja.avisoDia||'')}</textarea><button class="btn pri" onclick="salvarAviso()">Salvar aviso</button></div>
-  <div class="row"><button class="btn pri" onclick="editarProd()">+ Novo produto</button>${esg?`<button class="btn" onclick="reporEsgotados()">↺ Repor ${esg} esgotado(s)</button>`:''}</div>
-  <p class="mut sm">Toque no produto para editar. A chave verde = disponível; desligue quando esgotar.</p>
-  ${nomes.map(c=>`<h3 class="sec">${esc(c)}</h3>${cats[c].sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome)).map(p=>`<div class="pr-row ${p.ativo===false?'inat':''}"><div style="flex:1;min-width:0" onclick="editarProd('${p.id}')"><b>${esc(p.nome)}</b>${p.esgotado?' <span class="tag t-novo">Esgotado</span>':''}${p.ativo===false?' <span class="tag">Oculto</span>':''}<div class="mut sm">${precoTxt(p)} · ${diasTxt(p.dias)}</div></div><label class="sw"><input type="checkbox" ${p.esgotado?'':'checked'} onchange="setEsg('${p.id}',!this.checked)"><span></span></label></div>`).join('')}`).join('')||'<p class="vazio">Nenhum produto ainda. Cadastre as marmitas, bebidas, sobremesas e adicionais.</p>'}`;
+  el.innerHTML=abas+`<div class="row"><button class="btn pri" onclick="editarProd()">+ Novo produto</button>${esg?`<button class="btn" onclick="reporEsgotados()">↺ Repor ${esg} esgotado(s)</button>`:''}</div>
+  <p class="mut sm">Aqui fica o catálogo completo. <b>Pratos do dia</b> só aparecem para o cliente quando entram no <b>Cardápio do dia</b>; <b>fixos</b> aparecem sempre. A chave verde = disponível.</p>
+  ${nomes.map(c=>`<h3 class="sec">${esc(c)}</h3>${cats[c].sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome)).map(p=>`<div class="pr-row ${p.ativo===false?'inat':''}">${p.foto?`<img class="pthumb" src="${esc(p.foto)}" alt="" onclick="editarProd('${p.id}')">`:''}<div style="flex:1;min-width:0" onclick="editarProd('${p.id}')"><b>${esc(p.nome)}</b> ${ehDoDia(p)?'<span class="tag t-preparo">do dia</span>':'<span class="tag">fixo</span>'}${p.montavel?' <span class="tag t-saiu">monte</span>':''}${p.esgotado?' <span class="tag t-novo">Esgotado</span>':''}${p.ativo===false?' <span class="tag">Oculto</span>':''}<div class="mut sm">${precoTxt(p)}${ehDoDia(p)&&(p.dias||[]).length?' · habitual: '+diasTxt(p.dias):''}${(estoque[p.id]||{}).controla?` · 📦 ${fmtQ(estoque[p.id].qtd)}`:''}</div></div><label class="sw"><input type="checkbox" ${p.esgotado?'':'checked'} onchange="setEsg('${p.id}',!this.checked)"><span></span></label></div>`).join('')}`).join('')||'<p class="vazio">Nenhum produto ainda. Cadastre as marmitas, bebidas, sobremesas e adicionais.</p>'}`;
 }
+
+/* ===== Cardápio do dia ===== */
+function cdNovo(data,base){
+  // base: documento a copiar; sem base, preenche pelos dias habituais
+  const dow=dt(data).getDay();
+  if(base)return{itens:[...(base.itens||[])].filter(id=>produtos.some(p=>p.id===id)),qtd:{...(base.qtd||{})},ops:JSON.parse(JSON.stringify(base.ops||{})),aviso:base.aviso||''};
+  return{itens:produtos.filter(p=>ehDoDia(p)&&(p.dias||[]).includes(dow)).map(p=>p.id),qtd:{},ops:{},aviso:''};
+}
+function cdCarregar(){const d=cardapios[cdData];cdEd=d?cdNovo(cdData,d):cdNovo(cdData);cdEd.publicado=!!(d&&d.publicado);cdEd.mexido=false}
+function renderDia(){
+  const box=$('#cdBox');if(!box)return;
+  const h=hojeStr();if(!cdData||cdData<h)cdData=h;
+  if(!cdEd||cdEd.data!==cdData||!cdEd.mexido){cdCarregar();cdEd.data=cdData}
+  const datas=[...Array(7)].map((_,i)=>somaDias(h,i));
+  const doDia=produtos.filter(p=>ehDoDia(p)&&p.ativo!==false).sort((a,b)=>String(a.categoria).localeCompare(b.categoria)||(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome));
+  const fixosMont=produtos.filter(p=>!ehDoDia(p)&&p.montavel&&p.ativo!==false);
+  const fixos=produtos.filter(p=>!ehDoDia(p)&&!p.montavel&&p.ativo!==false);
+  const pub=cardapios[cdData]&&cardapios[cdData].publicado;
+  box.innerHTML=`<div class="chips">${datas.map(d=>`<button class="chip ${d===cdData?'on':''}" onclick="trocarDia('${d}')">${rotDia(d)}${cardapios[d]&&cardapios[d].publicado?' ✅':''}</button>`).join('')}</div>
+  <div class="card" style="${pub&&!cdEd.mexido?'background:#ebfbee;border-color:#b2f2bb':'background:#fff9db;border-color:#ffe066'}"><b>${dataLonga(cdData)}</b><div class="sm">${pub?(cdEd.mexido?'✏️ Alterações não publicadas':'✅ Publicado — é isso que o cliente vê'):'📝 Ainda não publicado'+(cdData===h?' — o cliente vê só os pratos marcados nos dias habituais':'')}</div></div>
+  <div class="row"><button class="btn" onclick="cdCopiar(-1)">↺ Repetir dia anterior</button><button class="btn" onclick="cdCopiar(-7)">↺ Mesmo dia semana passada</button><button class="btn" onclick="cdHabituais()">📅 Dias habituais</button><button class="btn" onclick="cdLimpar()">Limpar</button></div>
+  <label>📣 Aviso do dia <span class="mut sm">(aparece no topo do cardápio)</span></label><input id="cdAviso" value="${esc(cdEd.aviso)}" placeholder="Ex.: Hoje tem feijoada! 🍲" oninput="cdEd.aviso=this.value;cdMexeu()">
+  <h3 class="sec">Pratos do dia</h3>
+  ${doDia.length?doDia.map(p=>cdLinha(p,true)).join(''):'<p class="mut sm">Nenhum prato do dia cadastrado. Em 🍱 Produtos, cadastre as marmitas como <b>Prato do dia</b>.</p>'}
+  ${fixosMont.length?`<h3 class="sec">Monte sua marmita (fixo)</h3>${fixosMont.map(p=>cdLinha(p,false)).join('')}`:''}
+  ${fixos.length?`<p class="mut sm" style="margin:10px 2px">➕ ${fixos.length} item(ns) fixo(s) aparecem todo dia: ${fixos.slice(0,6).map(p=>esc(p.nome)).join(', ')}${fixos.length>6?'…':''}</p>`:''}
+  <button class="btn pri big" onclick="publicarDia()">✅ Publicar cardápio de ${rotDia(cdData).toLowerCase()}</button>
+  <div class="row"><button class="btn" style="flex:1" onclick="divulgar('${cdData}')">📣 Divulgar no WhatsApp</button><button class="btn" style="flex:1" onclick="programarSemana()">🗓️ Programar a semana</button></div>
+  <p class="mut sm">A quantidade produzida vira o estoque do prato no dia (quando zerar, fica esgotado sozinho). À meia-noite o cardápio do dia seguinte entra no lugar.</p>`;
+}
+function cdLinha(p,comChave){
+  const on=!comChave||cdEd.itens.includes(p.id);
+  let h=`<div class="card" style="padding:10px 12px;${on?'':'opacity:.65'}"><div class="row2">${p.foto?`<img class="pthumb" src="${esc(p.foto)}" alt="">`:''}<div style="flex:1;min-width:0"><b>${esc(p.nome)}</b><div class="mut sm">${precoTxt(p)}</div></div>${comChave?`<label class="sw"><input type="checkbox" ${on?'checked':''} onchange="cdToggle('${p.id}',this.checked)"><span></span></label>`:''}</div>`;
+  if(on){
+    h+=`<div class="row2" style="margin-top:6px"><span class="mut sm" style="flex:2">Qtd produzida <span class="mut">(opcional)</span></span><input style="flex:1;margin:0" inputmode="numeric" placeholder="—" value="${cdEd.qtd[p.id]??''}" oninput="cdQtd('${p.id}',this.value)"></div>`;
+    if(p.montavel)(p.grupos||[]).forEach((g,gi)=>{
+      const ativas=((cdEd.ops[p.id]||{})[g.nome]);
+      h+=`<div style="margin-top:8px"><div class="sm"><b>${esc(g.nome)}</b> <span class="mut">${regraTxt(g)}</span></div><div class="chips" style="flex-wrap:wrap;overflow:visible;padding-bottom:2px">${(g.opcoes||[]).map(o=>{const at=!ativas||ativas.includes(o.nome);return `<button class="chip ${at?'on':''}" onclick="cdOp('${p.id}',${gi},'${esc(o.nome).replace(/'/g,'&#39;')}')">${esc(o.nome)}${+o.extra?' +'+brl(o.extra):''}</button>`}).join('')}<button class="chip" onclick="cdNovaOp('${p.id}',${gi})">+ opção</button></div></div>`;
+    });
+  }
+  return h+'</div>';
+}
+const regraTxt=g=>{const mi=+g.min||0,ma=+g.max||0;if(mi&&ma&&mi===ma)return `(escolha ${ma})`;if(ma&&!mi)return `(até ${ma}, opcional)`;if(ma)return `(de ${mi} a ${ma})`;return mi?`(mín. ${mi})`:'(opcional)'};
+function cdMexeu(){if(!cdEd.mexido){cdEd.mexido=true;const c=document.querySelector('#cdBox .card');if(c){c.style.background='#fff9db';c.style.borderColor='#ffe066';c.querySelector('.sm').textContent='✏️ Alterações não publicadas'}}}
+function trocarDia(d){if(cdEd&&cdEd.mexido&&!confirm('Você tem alterações não publicadas neste dia. Trocar mesmo assim?'))return;cdData=d;cdEd=null;renderDia()}
+function cdToggle(pid,on){cdEd.itens=cdEd.itens.filter(x=>x!==pid);if(on)cdEd.itens.push(pid);cdEd.mexido=true;renderDia()}
+function cdQtd(pid,v){const n=parseInt(String(v).replace(/\D/g,''),10);if(n>=0)cdEd.qtd[pid]=n;else delete cdEd.qtd[pid];cdMexeu()}
+function cdOp(pid,gi,nome){
+  nome=nome.replace(/&#39;/g,"'");const p=produtos.find(x=>x.id===pid),g=p.grupos[gi];
+  const ops=cdEd.ops[pid]=cdEd.ops[pid]||{};let at=ops[g.nome]||g.opcoes.map(o=>o.nome);
+  at=at.includes(nome)?at.filter(x=>x!==nome):[...at,nome];ops[g.nome]=at;cdEd.mexido=true;renderDia();
+}
+async function cdNovaOp(pid,gi){
+  const nome=(prompt('Nova opção (ex.: Strogonoff de frango):')||'').trim();if(!nome)return;
+  const extra=num(prompt('Valor a mais para esta opção (R$, vazio = sem acréscimo):')||'');
+  const p=produtos.find(x=>x.id===pid),gr=JSON.parse(JSON.stringify(p.grupos));
+  if(gr[gi].opcoes.some(o=>o.nome.toLowerCase()===nome.toLowerCase()))return toast('Essa opção já existe');
+  gr[gi].opcoes.push({nome,extra});
+  try{await lojaRef().collection('produtos').doc(pid).update({grupos:gr});const ops=cdEd.ops[pid];if(ops&&ops[gr[gi].nome])ops[gr[gi].nome].push(nome);cdEd.mexido=true;toast('Opção adicionada');setTimeout(renderDia,150)}catch(e){toast('Erro: '+e.message)}
+}
+function cdCopiar(n){const src=cardapios[somaDias(cdData,n)];if(!src||!src.publicado)return toast(n===-1?'O dia anterior não tem cardápio publicado':'Não há cardápio publicado na semana passada nesse dia');const pub=cdEd.publicado;cdEd=cdNovo(cdData,src);cdEd.data=cdData;cdEd.publicado=pub;cdEd.mexido=true;renderDia();toast('Copiado. Confira e toque em Publicar.')}
+function cdHabituais(){const pub=cdEd.publicado;cdEd=cdNovo(cdData);cdEd.data=cdData;cdEd.publicado=pub;cdEd.mexido=true;renderDia();toast('Preenchido pelos dias habituais')}
+function cdLimpar(){cdEd.itens=[];cdEd.qtd={};cdEd.ops={};cdEd.mexido=true;renderDia()}
+async function publicarDia(){
+  const data=cdData,doc={data,publicado:true,itens:cdEd.itens.filter(id=>produtos.some(p=>p.id===id)),qtd:{},ops:cdEd.ops,aviso:(cdEd.aviso||'').trim(),atualizadoMs:Date.now(),por:user.email};
+  doc.itens.forEach(id=>{if(cdEd.qtd[id]>=0)doc.qtd[id]=cdEd.qtd[id]});
+  produtos.filter(p=>p.montavel&&!ehDoDia(p)&&cdEd.qtd[p.id]>=0).forEach(p=>doc.qtd[p.id]=cdEd.qtd[p.id]);
+  const ant=cardapios[data];doc.estoqueAplicado=!!(ant&&ant.estoqueAplicado&&JSON.stringify(ant.qtd||{})===JSON.stringify(doc.qtd));
+  if(!doc.itens.length&&!confirm('Nenhum prato do dia marcado. Publicar assim mesmo (só os itens fixos aparecem)?'))return;
+  try{
+    const b=db.batch();b.set(lojaRef().collection('cardapios').doc(data),doc);
+    if(data===hojeStr())b.update(lojaRef(),{avisoDia:doc.aviso});
+    await b.commit();cardapios[data]=doc;cdEd.publicado=true;cdEd.mexido=false;
+    if(data===hojeStr())await aplicarProducao(data,true);
+    toast('Cardápio de '+rotDia(data).toLowerCase()+' publicado ✅');renderDia();
+  }catch(e){toast('Erro: '+e.message)}
+}
+/* Produção do dia → estoque (quantidade absoluta) e baixa das encomendas desse dia */
+let aplicando=false,chkProd=null;
+function checarProducao(){clearTimeout(chkProd);chkProd=setTimeout(()=>{const h=hojeStr();if(lojaId&&produtos.length&&cardapios[h]&&cardapios[h].publicado&&!cardapios[h].estoqueAplicado)aplicarProducao(h)},1500)}
+async function aplicarProducao(data,forcar){
+  const c=cardapios[data];if(aplicando||!c||!c.publicado||(c.estoqueAplicado&&!forcar))return;
+  const q=c.qtd||{},pids=Object.keys(q);if(!pids.length){if(!c.estoqueAplicado)await lojaRef().collection('cardapios').doc(data).update({estoqueAplicado:true}).catch(()=>{});return}
+  aplicando=true;
+  try{
+    const b=db.batch(),itensMov=[];
+    pids.forEach(pid=>{const p=produtos.find(x=>x.id===pid);if(!p)return;
+      b.set(lojaRef().collection('estoque').doc(pid),{controla:true,qtd:q[pid]},{merge:true});
+      estoque[pid]={...(estoque[pid]||{}),controla:true,qtd:q[pid]};
+      if(p.esgotado&&q[pid]>0)b.update(lojaRef().collection('produtos').doc(pid),{esgotado:false,esgotadoAuto:false});
+      itensMov.push({nome:p.nome,qtd:q[pid]});
+    });
+    b.set(lojaRef().collection('movEstoque').doc(),{tipo:'ajuste',ref:'Produção do dia '+data.split('-').reverse().slice(0,2).join('/'),itens:itensMov,ms:Date.now(),por:user.email});
+    const enc=(await lojaRef().collection('pedidos').where('paraData','==',data).get()).docs.map(d=>({id:d.id,...d.data()}));
+    enc.filter(p=>p.encomenda&&p.status!=='cancelado'&&!p.estoqueBaixado).forEach(p=>{if(movimentarEstoque(b,p,-1))b.update(lojaRef().collection('pedidos').doc(p.id),{estoqueBaixado:true})});
+    b.update(lojaRef().collection('cardapios').doc(data),{estoqueAplicado:true});
+    await b.commit();c.estoqueAplicado=true;
+  }catch(e){console.error(e);toast('Erro ao lançar a produção no estoque: '+e.message)}
+  aplicando=false;
+}
+async function programarSemana(){
+  const h=hojeStr(),datas=[...Array(7)].map((_,i)=>somaDias(h,i));
+  const livres=datas.filter(d=>!(cardapios[d]&&cardapios[d].publicado)),comBase=livres.filter(d=>cardapios[somaDias(d,-7)]&&cardapios[somaDias(d,-7)].publicado);
+  const usar=comBase.length?'semana':'habitual';
+  if(!livres.length)return toast('Os próximos 7 dias já estão publicados');
+  if(!confirm(usar==='semana'?`Copiar a semana passada para ${comBase.length} dia(s) ainda sem cardápio (${comBase.map(rotDia).join(', ')})?`:`Montar ${livres.length} dia(s) sem cardápio pelos dias habituais de cada prato?`))return;
+  const alvo=usar==='semana'?comBase:livres.filter(d=>cdNovo(d).itens.length);
+  if(!alvo.length)return toast('Nenhum prato tem dias habituais marcados');
+  try{const b=db.batch();alvo.forEach(d=>{const n=usar==='semana'?cdNovo(d,cardapios[somaDias(d,-7)]):cdNovo(d);b.set(lojaRef().collection('cardapios').doc(d),{data:d,publicado:true,itens:n.itens,qtd:n.qtd,ops:n.ops,aviso:n.aviso,estoqueAplicado:false,atualizadoMs:Date.now(),por:user.email})});await b.commit();
+    toast(`${alvo.length} dia(s) programado(s) ✅`);cdEd=null;setTimeout(()=>{renderDia();if(alvo.includes(h))aplicarProducao(h)},300)}catch(e){toast('Erro: '+e.message)}
+}
+
+/* ===== Divulgar (imagem + texto) ===== */
+function itensDoDia(data){
+  const c=cardapios[data],dow=dt(data).getDay();
+  const doDia=produtos.filter(p=>p.ativo!==false&&ehDoDia(p)&&(c&&c.publicado?(c.itens||[]).includes(p.id):(p.dias||[]).includes(dow)));
+  const mont=produtos.filter(p=>p.ativo!==false&&!ehDoDia(p)&&p.montavel);
+  const opsDe=p=>(p.grupos||[]).map(g=>{const at=c&&c.ops&&c.ops[p.id]&&c.ops[p.id][g.nome];return{nome:g.nome,ops:(g.opcoes||[]).filter(o=>!at||at.includes(o.nome)).map(o=>o.nome)}}).filter(g=>g.ops.length);
+  return [...doDia,...mont].map(p=>({p,grupos:p.montavel?opsDe(p):[]}));
+}
+function textoDivulgar(data){
+  const L=itensDoDia(data),c=cardapios[data]||{},aviso=data===hojeStr()?(loja.avisoDia||c.aviso):c.aviso;
+  let t=`🍱 *${loja.nome}*\n📅 *Cardápio de ${rotDia(data)==='Hoje'?'hoje':rotDia(data)==='Amanhã'?'amanhã':dataLonga(data)}*${rotDia(data)==='Hoje'||rotDia(data)==='Amanhã'?' ('+dataLonga(data)+')':''}\n`;
+  if(aviso)t+=`\n${aviso}\n`;
+  L.forEach(({p,grupos})=>{t+=`\n• *${p.nome}* – ${precoTxt(p)}`;if(p.descricao&&!grupos.length)t+=`\n   ${p.descricao}`;grupos.forEach(g=>t+=`\n   ${g.nome}: ${g.ops.join(', ')}`)});
+  if(!L.length)t+='\n(cardápio ainda não montado)';
+  if(loja.horaLimite)t+=`\n\n⏰ Pedidos até ${loja.horaLimite}`;
+  if(loja.fazEntrega!==false)t+=`\n🛵 Entrega ${+loja.taxaEntrega>0?brl(loja.taxaEntrega):'grátis'}`;
+  return t+`\n\n👉 Peça pelo link: ${linkCli(lojaId)}`;
+}
+async function imagemDivulgar(data){
+  const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),cor=loja.cor||'#d9480f';
+  x.fillStyle='#fff8f3';x.fillRect(0,0,W,H);x.fillStyle=cor;x.fillRect(0,0,W,300);
+  let lx=70;
+  if(loja.logo){try{const im=new Image();im.src=loja.logo;await im.decode();x.save();x.beginPath();x.arc(170,150,100,0,Math.PI*2);x.fillStyle='#fff';x.fill();x.clip();const k=Math.min(170/im.naturalWidth,170/im.naturalHeight);x.drawImage(im,170-im.naturalWidth*k/2,150-im.naturalHeight*k/2,im.naturalWidth*k,im.naturalHeight*k);x.restore();lx=300}catch(e){}}
+  x.fillStyle='#fff';x.font='bold 64px system-ui,sans-serif';x.textBaseline='middle';fitText(x,loja.nome,lx,120,W-lx-60);
+  x.font='40px system-ui,sans-serif';x.fillText('Cardápio · '+dataLonga(data),lx,200);
+  const L=itensDoDia(data),c2=cardapios[data]||{},aviso=data===hojeStr()?(loja.avisoDia||c2.aviso):c2.aviso;
+  let y=360;
+  if(aviso){x.fillStyle='#fff3bf';rr(x,60,y-10,W-120,90,24);x.fill();x.fillStyle='#5c3d00';x.font='bold 40px system-ui,sans-serif';fitText(x,'📣 '+aviso,90,y+35,W-180);y+=120}
+  const linhas=[];L.forEach(({p,grupos})=>{linhas.push({t:p.nome,pr:precoTxt(p),b:true});grupos.forEach(g=>linhas.push({t:g.nome+': '+g.ops.join(', ')}));if(!grupos.length&&p.descricao)linhas.push({t:p.descricao})});
+  if(!linhas.length)linhas.push({t:'Cardápio ainda não montado',b:true});
+  const disp=H-y-230;let fs=46;const altura=f=>linhas.reduce((t,l)=>t+(l.b?f*2.6:f*1.25)+(l.b?14:0),0);while(altura(fs)>disp&&fs>24)fs-=2;
+  linhas.forEach(l=>{if(l.b){y+=14;x.font=`bold ${fs}px system-ui,sans-serif`;const w=x.measureText(l.pr||'').width,nw=x.measureText('• '+l.t).width;if(l.pr&&w+nw+40<=W-140){x.fillStyle=cor;x.fillText(l.pr,W-70-w,y+fs*.6);x.fillStyle='#2b2118';x.fillText('• '+l.t,70,y+fs*.6);y+=fs*1.5}else{x.fillStyle='#2b2118';fitText(x,'• '+l.t,70,y+fs*.6,W-140);y+=fs*1.3;if(l.pr){x.fillStyle=cor;x.font=`bold ${Math.round(fs*.8)}px system-ui,sans-serif`;fitText(x,l.pr,110,y+fs*.5,W-180);y+=fs*1.15}}}else{x.fillStyle='#6b5d50';x.font=`${Math.round(fs*.78)}px system-ui,sans-serif`;y=quebra(x,l.t,110,y+fs*.55,W-180,fs*1.05);y+=fs*.35}});
+  x.fillStyle=cor;x.fillRect(0,H-200,W,200);x.fillStyle='#fff';x.font='bold 48px system-ui,sans-serif';x.fillText('📲 Peça pelo link',70,H-140);
+  x.font='34px system-ui,sans-serif';fitText(x,linkCli(lojaId).replace(/^https?:\/\//,''),70,H-80,W-140);
+  if(loja.horaLimite){x.font='bold 34px system-ui,sans-serif';const t='⏰ até '+loja.horaLimite;x.fillText(t,W-70-x.measureText(t).width,H-140)}
+  return new Promise(ok=>c.toBlob(ok,'image/png'));
+}
+function fitText(x,t,X,Y,maxW){let s=String(t);if(x.measureText(s).width<=maxW)return x.fillText(s,X,Y);while(s.length>1&&x.measureText(s+'…').width>maxW)s=s.slice(0,-1);x.fillText(s+'…',X,Y)}
+function quebra(x,t,X,Y,maxW,lh){const ps=String(t).split(' ');let l='';ps.forEach(p=>{const tt=l?l+' '+p:p;if(x.measureText(tt).width>maxW&&l){x.fillText(l,X,Y);Y+=lh;l=p}else l=tt});if(l){x.fillText(l,X,Y);Y+=lh}return Y}
+function rr(x,X,Y,w,h,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath()}
+let divBlob=null;
+async function divulgar(data){
+  if(cdEd&&cdEd.mexido&&data===cdData&&!confirm('Há alterações não publicadas. A divulgação usa o cardápio publicado. Continuar?'))return;
+  modal('<h2>📣 Divulgar cardápio</h2><p class="vazio">Gerando imagem…</p>');
+  divBlob=await imagemDivulgar(data);const url=URL.createObjectURL(divBlob),txt=textoDivulgar(data);
+  modal(`<h2>📣 Divulgar cardápio</h2><img src="${url}" style="width:100%;border-radius:12px;border:1px solid var(--bd)" alt="">
+  <div class="row"><button class="btn pri" style="flex:1" onclick="compartilharDiv()">📤 Compartilhar imagem + texto</button></div>
+  <div class="row"><a class="btn" style="flex:1" href="${url}" download="cardapio-${data}.png">⬇️ Baixar imagem</a><button class="btn" style="flex:1" onclick="copiarTxt($('#divTxt').value)">📋 Copiar texto</button></div>
+  <a class="btn" style="width:100%;margin-bottom:8px;background:#25d366;border-color:#25d366;color:#fff" target="_blank" href="https://wa.me/?text=${encodeURIComponent(txt)}">💬 Enviar só o texto no WhatsApp</a>
+  <textarea id="divTxt" rows="9">${esc(txt)}</textarea>
+  <p class="mut sm">Para o status do WhatsApp: toque em Compartilhar, escolha WhatsApp → Meu status. Para grupos, escolha o grupo.</p>`);
+}
+async function compartilharDiv(){
+  const txt=$('#divTxt').value,f=new File([divBlob],'cardapio.png',{type:'image/png'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],text:txt});else{copiarTxt(txt);toast('Este aparelho não compartilha imagem direto: baixe a imagem e cole o texto.')}}catch(e){}
+}
+
+/* ===== Cadastro de produto ===== */
 async function salvarAviso(){try{await lojaRef().update({avisoDia:$('#avisoDia').value.trim()});toast('Aviso salvo')}catch(e){toast('Erro: '+e.message)}}
-async function setEsg(id,v){try{await lojaRef().collection('produtos').doc(id).update({esgotado:v});toast(v?'Marcado como esgotado':'Disponível de novo')}catch(e){toast('Erro: '+e.message)}}
-async function reporEsgotados(){const b=db.batch();produtos.filter(p=>p.esgotado).forEach(p=>b.update(lojaRef().collection('produtos').doc(p.id),{esgotado:false}));await b.commit();toast('Todos disponíveis de novo')}
+async function setEsg(id,v){try{await lojaRef().collection('produtos').doc(id).update({esgotado:v,esgotadoAuto:false});toast(v?'Marcado como esgotado':'Disponível de novo')}catch(e){toast('Erro: '+e.message)}}
+async function reporEsgotados(){const b=db.batch();produtos.filter(p=>p.esgotado).forEach(p=>b.update(lojaRef().collection('produtos').doc(p.id),{esgotado:false,esgotadoAuto:false}));await b.commit();toast('Todos disponíveis de novo')}
 function editarProd(id,base){
-  const p=base||(id?produtos.find(x=>x.id===id):{nome:'',categoria:'Marmitas',preco:0,ativo:true,dias:[],variacoes:[],adicionais:[]});
-  ed={id:base?null:id,vars:JSON.parse(JSON.stringify(p.variacoes||[])),ads:JSON.parse(JSON.stringify(p.adicionais||[]))};
+  const p=base||(id?produtos.find(x=>x.id===id):{nome:'',categoria:'Marmitas',preco:0,ativo:true,dias:[],doDia:true,variacoes:[],adicionais:[]});
+  ed={id:base?null:id,foto:p.foto||'',doDia:ehDoDia(p),montavel:!!p.montavel,grupos:JSON.parse(JSON.stringify(p.grupos||[])),vars:JSON.parse(JSON.stringify(p.variacoes||[])),ads:JSON.parse(JSON.stringify(p.adicionais||[]))};
   const cats=[...new Set(['Marmitas','Bebidas','Sobremesas','Adicionais'].concat(produtos.map(x=>x.categoria).filter(Boolean)))];
   modal(`<h2>${ed.id?'Editar':'Novo'} produto</h2>
-  <label>Nome</label><input id="pNome" value="${esc(p.nome)}" placeholder="Ex.: Marmita de frango grelhado">
+  <label>Nome</label><input id="pNome" value="${esc(p.nome)}" placeholder="Ex.: Feijoada, Frango grelhado, Monte sua marmita">
   <label>Descrição</label><textarea id="pDesc" rows="2" placeholder="Arroz, feijão, frango grelhado, farofa e salada">${esc(p.descricao||'')}</textarea>
   <label>Categoria</label><input id="pCat" list="dlCats" value="${esc(p.categoria||'')}"><datalist id="dlCats">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+  <label>Quando aparece</label>
+  <div class="seg2"><label class="ck"><input type="radio" name="pTipo" ${ed.doDia?'checked':''} onchange="ed.doDia=true;$('#pDiasBox').style.display=''"> 📅 <b>Prato do dia</b> — entra pelo Cardápio do dia</label>
+  <label class="ck"><input type="radio" name="pTipo" ${ed.doDia?'':'checked'} onchange="ed.doDia=false;$('#pDiasBox').style.display='none'"> 📌 <b>Fixo</b> — aparece todo dia (bebidas, sobremesas…)</label></div>
+  <div id="pDiasBox" class="sub" style="display:${ed.doDia?'':'none'}"><p class="mut sm" style="margin-bottom:6px">Dias habituais (opcional): servem para montar o cardápio do dia mais rápido.</p>
+  <div class="dias">${DIASC.map((d,i)=>`<label><input type="checkbox" class="pDia" value="${i}" ${(p.dias||[]).includes(i)?'checked':''}>${d}</label>`).join('')}</div></div>
   <label>Preço (R$)</label><input id="pPreco" inputmode="decimal" value="${fmtNum(p.preco)}" placeholder="Deixe vazio se usar tamanhos abaixo">
   <label>Tamanhos <span class="mut sm">(ex.: P, M, G — cada um com seu preço)</span></label><div id="edVars"></div><button class="lnk" onclick="edAdd('vars')">+ adicionar tamanho</button>
+  <label class="ck" style="margin-top:12px"><input type="checkbox" id="pMont" ${ed.montavel?'checked':''} onchange="ed.montavel=this.checked;$('#pMontBox').style.display=this.checked?'':'none';if(this.checked&&!ed.grupos.length)grupoModelo()"> 🍱 <b>Monte sua marmita</b> — o cliente escolhe os itens</label>
+  <div id="pMontBox" class="sub" style="display:${ed.montavel?'':'none'}"><p class="mut sm">Grupos de escolha, ex.: Proteína (escolha 1), Acompanhamentos (até 3). As opções de cada dia você liga/desliga no Cardápio do dia.</p><div id="edGrupos"></div>
+  <div class="row"><button class="lnk" onclick="ed.grupos.push({nome:'',min:0,max:1,opcoes:[]});grupoRender()">+ adicionar grupo</button>${ed.grupos.length?'':'<button class="lnk" onclick="grupoModelo()">Usar modelo pronto</button>'}</div></div>
   <label>Adicionais <span class="mut sm">(ex.: ovo frito + R$ 3,00)</span></label><div id="edAds"></div><button class="lnk" onclick="edAdd('ads')">+ adicionar adicional</button>
-  <label>Dias do cardápio</label><p class="mut sm" style="margin-bottom:6px">Marcando dias, o item aparece no <b>"Cardápio de hoje"</b> só nesses dias. Sem nenhum marcado, aparece todo dia na sua categoria.</p>
-  <div class="dias">${DIASC.map((d,i)=>`<label><input type="checkbox" class="pDia" value="${i}" ${(p.dias||[]).includes(i)?'checked':''}>${d}</label>`).join('')}</div>
-  <label>Foto (link da imagem, opcional)</label><input id="pFoto" value="${esc(p.foto||'')}" placeholder="https://…">
+  <label>Foto do produto</label>
+  <div class="fotobox"><div class="fotoprev" id="pFotoPrev"></div><div style="flex:1"><label class="btn" style="margin:0 0 6px;display:flex">📷 Escolher foto<input type="file" accept="image/*" style="display:none" onchange="fotoProduto(this)"></label><button class="lnk" onclick="ed.foto='';fotoPrev()">Remover foto</button></div></div>
   <label>Ordem de exibição</label><input id="pOrdem" type="number" value="${p.ordem||0}">
   <label class="ck"><input type="checkbox" id="pAtivo" ${p.ativo!==false?'checked':''}> Visível no cardápio</label>
   <label class="ck"><input type="checkbox" id="pEsg" ${p.esgotado?'checked':''}> Esgotado</label>
   <div class="row"><button class="btn pri" style="flex:1" onclick="salvarProd()">Salvar</button>${ed.id?`<button class="btn" onclick="duplicarProd('${id}')">Duplicar</button><button class="btn danger" onclick="excluirProd('${id}')">Excluir</button>`:''}</div>`);
-  edRender();
+  edRender();fotoPrev();grupoRender();
+}
+function grupoModelo(){ed.grupos=[{nome:'Proteína',min:1,max:1,opcoes:[{nome:'Frango grelhado',extra:0},{nome:'Bife acebolado',extra:0}]},{nome:'Acompanhamentos',min:1,max:3,opcoes:['Arroz','Feijão','Farofa','Macarrão','Purê'].map(n=>({nome:n,extra:0}))},{nome:'Salada',min:0,max:1,opcoes:[{nome:'Salada verde',extra:0}]}];grupoRender()}
+function grupoRender(){
+  const el=$('#edGrupos');if(!el)return;
+  el.innerHTML=ed.grupos.map((g,gi)=>`<div class="card" style="padding:10px;margin-bottom:8px"><div class="row2"><input style="flex:2" value="${esc(g.nome)}" placeholder="Nome do grupo" oninput="ed.grupos[${gi}].nome=this.value"><button class="ib" onclick="ed.grupos.splice(${gi},1);grupoRender()">✕</button></div>
+  <div class="row2"><span class="mut sm">Mínimo</span><input style="flex:1" type="number" min="0" value="${+g.min||0}" oninput="ed.grupos[${gi}].min=+this.value"><span class="mut sm">Máximo</span><input style="flex:1" type="number" min="1" value="${+g.max||1}" oninput="ed.grupos[${gi}].max=+this.value"></div>
+  ${(g.opcoes||[]).map((o,oi)=>`<div class="row2"><input style="flex:2" value="${esc(o.nome)}" placeholder="Opção" oninput="ed.grupos[${gi}].opcoes[${oi}].nome=this.value"><input style="flex:1" inputmode="decimal" value="${+o.extra?String(o.extra).replace('.',','):''}" placeholder="+ R$" oninput="ed.grupos[${gi}].opcoes[${oi}].extra=this.value"><button class="ib" onclick="ed.grupos[${gi}].opcoes.splice(${oi},1);grupoRender()">✕</button></div>`).join('')}
+  <button class="lnk" onclick="ed.grupos[${gi}].opcoes.push({nome:'',extra:''});grupoRender()">+ opção</button></div>`).join('');
 }
 function edRender(){
   const r=k=>ed[k].map((x,i)=>`<div class="row2"><input value="${esc(x.nome)}" placeholder="Nome" oninput="ed.${k}[${i}].nome=this.value" style="flex:2"><input value="${x.preco===''||x.preco===undefined?'':esc(String(x.preco).replace('.',','))}" inputmode="decimal" placeholder="R$" oninput="ed.${k}[${i}].preco=this.value" style="flex:1"><button class="ib" onclick="ed.${k}.splice(${i},1);edRender()">✕</button></div>`).join('');
@@ -375,15 +607,218 @@ function edAdd(k){ed[k].push({nome:'',preco:''});edRender()}
 async function salvarProd(){
   const nome=$('#pNome').value.trim();if(!nome)return toast('Informe o nome');
   const conv=a=>a.filter(x=>String(x.nome).trim()).map(x=>({nome:String(x.nome).trim(),preco:num(x.preco)}));
+  const grupos=ed.montavel?ed.grupos.filter(g=>String(g.nome).trim()).map(g=>({nome:String(g.nome).trim(),min:Math.max(0,parseInt(g.min)||0),max:Math.max(1,parseInt(g.max)||1),opcoes:(g.opcoes||[]).filter(o=>String(o.nome).trim()).map(o=>({nome:String(o.nome).trim(),extra:num(o.extra)}))})):[];
+  if(ed.montavel){if(!grupos.length)return toast('Monte sua marmita: crie pelo menos um grupo');
+    for(const g of grupos){if(g.min>g.max)return toast(`Grupo "${g.nome}": mínimo maior que o máximo`);if(!g.opcoes.length)return toast(`Grupo "${g.nome}": cadastre as opções`);if(new Set(g.opcoes.map(o=>o.nome)).size!==g.opcoes.length)return toast(`Grupo "${g.nome}": opções repetidas`)}
+    if(new Set(grupos.map(g=>g.nome)).size!==grupos.length)return toast('Há grupos com o mesmo nome')}
   const d={nome,descricao:$('#pDesc').value.trim(),categoria:$('#pCat').value.trim()||'Outros',preco:num($('#pPreco').value),variacoes:conv(ed.vars),adicionais:conv(ed.ads),
-    dias:[...document.querySelectorAll('.pDia:checked')].map(x=>+x.value),foto:$('#pFoto').value.trim(),ordem:+$('#pOrdem').value||0,ativo:$('#pAtivo').checked,esgotado:$('#pEsg').checked,atualizadoMs:Date.now()};
-  if(d.dias.length===7)d.dias=[];
+    doDia:!!ed.doDia,dias:ed.doDia?[...document.querySelectorAll('.pDia:checked')].map(x=>+x.value):[],montavel:!!ed.montavel,grupos,
+    foto:ed.foto||'',ordem:+$('#pOrdem').value||0,ativo:$('#pAtivo').checked,esgotado:$('#pEsg').checked,atualizadoMs:Date.now()};
   if(!d.variacoes.length&&!(d.preco>0))return toast('Informe o preço ou os tamanhos');
   const nomes=d.variacoes.map(v=>v.nome);if(new Set(nomes).size!==nomes.length)return toast('Há tamanhos com o mesmo nome');
   try{const col=lojaRef().collection('produtos');if(ed.id)await col.doc(ed.id).update(d);else await col.add(d);fecharModal();toast('Produto salvo')}catch(e){toast('Erro: '+e.message)}
 }
 function duplicarProd(id){const p=produtos.find(x=>x.id===id);editarProd(null,{...p,nome:p.nome+' (cópia)'})}
-async function excluirProd(id){if(!confirm('Excluir este produto?'))return;try{await lojaRef().collection('produtos').doc(id).delete();fecharModal();toast('Produto excluído')}catch(e){toast('Erro: '+e.message)}}
+async function excluirProd(id){if(!confirm('Excluir este produto?'))return;try{const b=db.batch();b.delete(lojaRef().collection('produtos').doc(id));b.delete(lojaRef().collection('estoque').doc(id));await b.commit();fecharModal();toast('Produto excluído')}catch(e){toast('Erro: '+e.message)}}
+
+// ---------- Imagens (reduzidas no aparelho e guardadas no próprio cadastro) ----------
+function lerImagem(file){return new Promise((ok,erro)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{ok(im)};im.onerror=()=>erro(new Error('Não foi possível abrir esta imagem'));im.src=u})}
+async function reduzirImagem(file,max,modo){
+  const im=await lerImagem(file);let w=im.naturalWidth,h=im.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+  if(modo==='logo'){let png=(x.drawImage(im,0,0,w,h),c.toDataURL('image/png'));if(png.length<160000)return png;x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);return c.toDataURL('image/jpeg',.88)}
+  x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);
+  let q=.78,d=c.toDataURL('image/jpeg',q);while(d.length>140000&&q>.4){q-=.1;d=c.toDataURL('image/jpeg',q)}
+  return d;
+}
+function fotoPrev(){const b=$('#pFotoPrev');if(b)b.innerHTML=ed&&ed.foto?`<img src="${esc(ed.foto)}" alt="">`:'📷'}
+async function fotoProduto(inp){const f=inp.files&&inp.files[0];if(!f)return;try{toast('Preparando foto…');ed.foto=await reduzirImagem(f,720,'foto');fotoPrev();toast('Foto pronta. Toque em Salvar.')}catch(e){toast(e.message)}inp.value=''}
+async function enviarLogo(inp){const f=inp.files&&inp.files[0];if(!f)return;try{toast('Enviando logo…');const d=await reduzirImagem(f,320,'logo');await lojaRef().update({logo:d});$('#aLogoPrev').innerHTML=`<img src="${d}" alt="">`;toast('Logo salvo ✅')}catch(e){toast('Erro: '+e.message)}inp.value=''}
+async function removerLogo(){if(!confirm('Remover o logo?'))return;try{await lojaRef().update({logo:''});$('#aLogoPrev').innerHTML='🍱';toast('Logo removido')}catch(e){toast('Erro: '+e.message)}}
+
+// ---------- Estoque e custos ----------
+// estoque/{produtoId}: {controla, qtd, minimo, custo, custoVar{tamanho:custo}, custoAd{adicional:custo}, ficha[{id,qtd}]}
+// insumos/{id}: {nome, unidade, qtd, minimo, custo}   movEstoque/{id}: histórico
+const INC=v=>firebase.firestore.FieldValue.increment(v);
+const fmtQ=v=>(Math.round((+v||0)*1000)/1000).toLocaleString('pt-BR');
+const precoBase=p=>(p.variacoes||[]).length?Math.min(...p.variacoes.map(v=>+v.preco||0)):(+p.preco||0);
+const r4=v=>Math.round((+v||0)*10000)/10000;
+let estAba='produtos',ee=null;
+function custoFicha(e){return (e&&e.ficha||[]).reduce((t,l)=>{const s=insumos.find(x=>x.id===l.id);return t+(s?(+s.custo||0)*(+l.qtd||0):0)},0)}
+function custoBase(pid){const e=estoque[pid]||{};return +e.custo>0?+e.custo:custoFicha(e)}
+function custoItem(i){
+  const e=estoque[i.pid]||{};
+  let c=(i.variacao&&e.custoVar&&+e.custoVar[i.variacao]>0)?+e.custoVar[i.variacao]:custoBase(i.pid);
+  (i.adicionais||[]).forEach(a=>{c+=+((e.custoAd||{})[a.nome])||0});
+  return c;
+}
+function emAlerta(){
+  return [...produtos.filter(p=>{const e=estoque[p.id];return e&&e.controla&&(+e.qtd||0)<=(+e.minimo||0)}).map(p=>p.nome),
+    ...insumos.filter(s=>+s.minimo>0&&(+s.qtd||0)<=+s.minimo).map(s=>s.nome)];
+}
+function badgeEstoque(){const n=emAlerta().length,b=$('#bdgEst');if(b){b.style.display=n?'':'none';b.textContent=n}}
+function avisoEstoque(){
+  if(!lojaId)return '';const a=emAlerta();if(!a.length)return '';
+  return `<div class="card" style="background:#fff4e6;border-color:#ffd8a8;cursor:pointer" onclick="irTab('estoque')"><b>📦 Estoque baixo:</b> <span class="sm">${a.slice(0,4).map(esc).join(', ')}${a.length>4?' e mais '+(a.length-4):''}</span></div>`;
+}
+/* Baixa (sinal -1) ou estorna (sinal +1) o estoque de um pedido dentro do batch. Retorna true se mexeu em algo. */
+function movimentarEstoque(b,p,sinal){
+  const tot={},ins={},avisosE=[];let mexeu=false;
+  (p.itens||[]).forEach(i=>{
+    const e=estoque[i.pid],q=+i.qtd||0;if(!e)return;
+    if(e.controla)tot[i.pid]=(tot[i.pid]||0)+q;
+    (e.ficha||[]).forEach(l=>{if(insumos.find(s=>s.id===l.id))ins[l.id]=(ins[l.id]||0)+q*(+l.qtd||0)});
+  });
+  for(const pid in tot){
+    const d=sinal*tot[pid],novo=(+estoque[pid].qtd||0)+d,pr=produtos.find(x=>x.id===pid);mexeu=true;
+    b.set(lojaRef().collection('estoque').doc(pid),{qtd:INC(d)},{merge:true});
+    if(pr){
+      if(novo<=0&&sinal<0&&!pr.esgotado)b.update(lojaRef().collection('produtos').doc(pid),{esgotado:true,esgotadoAuto:true});
+      else if(novo>0&&sinal>0&&pr.esgotadoAuto)b.update(lojaRef().collection('produtos').doc(pid),{esgotado:false,esgotadoAuto:false});
+      if(sinal<0&&novo<=(+estoque[pid].minimo||0))avisosE.push(`${pr.nome}: ${fmtQ(novo)}`);
+    }
+  }
+  for(const id in ins){
+    const d=r4(sinal*ins[id]),s=insumos.find(x=>x.id===id),novo=(+s.qtd||0)+d;mexeu=true;
+    b.update(lojaRef().collection('insumos').doc(id),{qtd:INC(d)});
+    if(sinal<0&&+s.minimo>0&&novo<=+s.minimo)avisosE.push(`${s.nome}: ${fmtQ(novo)} ${s.unidade||''}`);
+  }
+  if(mexeu){
+    b.set(lojaRef().collection('movEstoque').doc(),{tipo:sinal<0?'venda':'estorno',ref:'Pedido #'+p.numero,ms:Date.now(),por:user.email,
+      itens:[...Object.keys(tot).map(pid=>({nome:(produtos.find(x=>x.id===pid)||{}).nome||pid,qtd:sinal*tot[pid]})),
+        ...Object.keys(ins).map(id=>{const s=insumos.find(x=>x.id===id)||{};return{nome:s.nome||id,qtd:r4(sinal*ins[id]),un:s.unidade||''}})]});
+    if(avisosE.length)setTimeout(()=>toast('⚠️ Estoque baixo – '+avisosE.join(' · ')),500);
+  }
+  return mexeu;
+}
+async function renderEstoque(){
+  const el=$('#t-estoque');if(!el||!loja)return;
+  const vP=produtos.reduce((t,p)=>{const e=estoque[p.id];return t+(e&&e.controla?Math.max(0,+e.qtd||0)*custoBase(p.id):0)},0);
+  const vI=insumos.reduce((t,s)=>t+Math.max(0,+s.qtd||0)*(+s.custo||0),0),al=emAlerta();
+  let h=`<div class="stats"><div class="stat"><div class="mut sm">Valor em estoque (custo)</div><div class="v">${brl(vP+vI)}</div></div><div class="stat"><div class="mut sm">Itens em alerta</div><div class="v" style="color:${al.length?'var(--al)':'inherit'}">${al.length}</div></div></div>
+  <div class="chips">${[['produtos','Produtos'],['insumos','Insumos'],['historico','Histórico']].map(([k,l])=>`<button class="chip ${estAba===k?'on':''}" onclick="estAba='${k}';renderEstoque()">${l}</button>`).join('')}</div>`;
+  if(estAba==='produtos'){
+    h+=`<p class="mut sm" style="margin-bottom:8px">Toque no produto para cadastrar o <b>custo</b>, a <b>ficha técnica</b> e ligar o controle de quantidade. O estoque baixa sozinho quando você <b>aceita</b> um pedido e volta se cancelar.</p>`;
+    h+=produtos.slice().sort((a,b)=>String(a.nome).localeCompare(b.nome)).map(p=>{
+      const e=estoque[p.id]||{},c=custoBase(p.id),pv=precoBase(p),semVar=!(p.variacoes||[]).length;
+      const marg=c>0&&pv>0&&semVar?Math.round((pv-c)/pv*100):null,baixo=e.controla&&(+e.qtd||0)<=(+e.minimo||0);
+      return `<div class="pr-row" onclick="editarEstoque('${p.id}')"><div style="flex:1;min-width:0"><b>${esc(p.nome)}</b><div class="mut sm">Custo ${c>0?brl(c):'<b style="color:var(--al)">não cadastrado</b>'}${marg!==null?` · margem ${marg}%`:''}${(e.ficha||[]).length?' · ficha técnica':''}</div></div>
+      ${e.controla?`<div style="text-align:right"><div style="font-size:19px;font-weight:800;color:${baixo?'var(--al)':'inherit'}">${fmtQ(e.qtd)}</div><div class="mut sm">mín. ${fmtQ(e.minimo)}</div></div><button class="btn" onclick="event.stopPropagation();entradaProd('${p.id}')">+</button>`:'<span class="tag">sem controle</span>'}</div>`;
+    }).join('')||'<p class="vazio">Cadastre produtos no Cardápio primeiro.</p>';
+  }else if(estAba==='insumos'){
+    h+=`<p class="mut sm" style="margin-bottom:8px">Insumos são matérias-primas e embalagens (arroz, feijão, carne, marmitex…). Coloque-os na ficha técnica dos produtos para baixarem sozinhos a cada venda.</p><button class="btn pri" style="width:100%;margin-bottom:10px" onclick="editarInsumo()">+ Novo insumo</button>`;
+    h+=insumos.slice().sort((a,b)=>String(a.nome).localeCompare(b.nome)).map(s=>{
+      const baixo=+s.minimo>0&&(+s.qtd||0)<=+s.minimo,un=esc(s.unidade||'un');
+      return `<div class="pr-row" onclick="editarInsumo('${s.id}')"><div style="flex:1;min-width:0"><b>${esc(s.nome)}</b><div class="mut sm">${brl(s.custo)}/${un}${+s.minimo?` · mín. ${fmtQ(s.minimo)}`:''}</div></div><div style="text-align:right"><div style="font-size:19px;font-weight:800;color:${baixo?'var(--al)':'inherit'}">${fmtQ(s.qtd)}</div><div class="mut sm">${un}</div></div><button class="btn" onclick="event.stopPropagation();entradaInsumo('${s.id}')">+</button></div>`;
+    }).join('')||'<p class="vazio">Nenhum insumo cadastrado.</p>';
+  }else h+='<div id="movList"><p class="vazio">Carregando…</p></div>';
+  el.innerHTML=h;
+  if(estAba==='historico'){
+    try{const q=await lojaRef().collection('movEstoque').orderBy('ms','desc').limit(60).get();movs=q.docs.map(d=>d.data());
+      $('#movList').innerHTML=movs.map(m=>`<div class="card" style="padding:10px 12px"><div class="pch"><b>${{venda:'🧾 Venda',estorno:'↩️ Estorno',entrada:'📥 Entrada',ajuste:'✏️ Ajuste'}[m.tipo]||esc(m.tipo)}</b><span class="mut sm">${new Date(m.ms).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></div>
+      <div class="sm">${esc(m.ref||'')}</div><div class="sm">${(m.itens||[]).map(i=>`${esc(i.nome)} <b style="color:${i.qtd<0?'var(--al)':'var(--ok)'}">${i.qtd>0?'+':''}${fmtQ(i.qtd)}${i.un?' '+esc(i.un):''}</b>`).join(' · ')}</div>${m.obs?`<div class="mut sm">${esc(m.obs)}</div>`:''}<div class="mut sm">${esc(m.por||'')}</div></div>`).join('')||'<p class="vazio">Nenhuma movimentação ainda.</p>';
+    }catch(e){$('#movList').innerHTML='<p class="vazio">Erro: '+esc(e.message)+'</p>'}
+  }
+}
+function editarEstoque(pid){
+  const p=produtos.find(x=>x.id===pid),e=estoque[pid]||{},vars=p.variacoes||[],ads=p.adicionais||[];
+  ee={pid,ficha:JSON.parse(JSON.stringify(e.ficha||[]))};
+  modal(`<h2>📦 ${esc(p.nome)}</h2>
+  <label class="ck"><input type="checkbox" id="eCtrl" ${e.controla?'checked':''} onchange="$('#eQtdBox').style.display=this.checked?'':'none'"> Controlar quantidade em estoque</label>
+  <div id="eQtdBox" class="sub" style="display:${e.controla?'':'none'}"><p class="mut sm">Bom para bebidas, sobremesas e para a produção do dia das marmitas. Ao zerar, o item fica <b>Esgotado</b> sozinho.</p>
+   <div class="row2"><div style="flex:1"><label>Quantidade atual</label><input id="eQtd" inputmode="decimal" value="${fmtNum(e.qtd)||0}"></div><div style="flex:1"><label>Avisar quando chegar em</label><input id="eMin" inputmode="decimal" value="${fmtNum(e.minimo)}" placeholder="0"></div></div></div>
+  <h4 style="margin-top:14px">💰 Preço de custo</h4>
+  <label>Custo unitário (R$)</label><input id="eCusto" inputmode="decimal" value="${fmtNum(e.custo)}" oninput="fichaResumo()" placeholder="${(e.ficha||[]).length?'Vazio = usa a ficha técnica':'Quanto custa para você'}">
+  ${vars.length?`<label>Custo por tamanho <span class="mut sm">(vazio = usa o custo acima)</span></label>${vars.map(v=>`<div class="row2"><span style="flex:2">${esc(v.nome)} <span class="mut sm">venda ${brl(v.preco)}</span></span><input class="eCV" data-n="${esc(v.nome)}" inputmode="decimal" style="flex:1" value="${fmtNum((e.custoVar||{})[v.nome])}" placeholder="R$"></div>`).join('')}`:''}
+  ${ads.length?`<label>Custo dos adicionais</label>${ads.map(a=>`<div class="row2"><span style="flex:2">${esc(a.nome)} <span class="mut sm">venda ${brl(a.preco)}</span></span><input class="eCA" data-n="${esc(a.nome)}" inputmode="decimal" style="flex:1" value="${fmtNum((e.custoAd||{})[a.nome])}" placeholder="R$"></div>`).join('')}`:''}
+  <h4 style="margin-top:14px">🧾 Ficha técnica <span class="mut sm">(opcional)</span></h4>
+  <p class="mut sm">Quanto de cada insumo vai em 1 unidade. Ex.: 0,15 kg de arroz + 1 marmitex. Os insumos baixam a cada venda e o custo é calculado sozinho.</p>
+  <div id="eFicha"></div>${insumos.length?`<button class="lnk" onclick="ee.ficha.push({id:insumos[0].id,qtd:''});fichaRender()">+ adicionar insumo</button>`:'<p class="mut sm">Cadastre insumos na aba <b>Insumos</b> para usar a ficha técnica.</p>'}
+  <div id="eResumo" class="card" style="margin-top:10px;background:#faf8f6"></div>
+  <div class="row"><button class="btn pri" style="flex:1" onclick="salvarEstoque()">Salvar</button>${e.controla?`<button class="btn" onclick="entradaProd('${pid}')">📥 Entrada</button>`:''}</div>`);
+  fichaRender();
+}
+function fichaRender(){
+  $('#eFicha').innerHTML=ee.ficha.map((l,i)=>`<div class="row2"><select style="flex:2" onchange="ee.ficha[${i}].id=this.value;fichaResumo()">${insumos.map(s=>`<option value="${s.id}" ${s.id===l.id?'selected':''}>${esc(s.nome)} (${esc(s.unidade||'un')})</option>`).join('')}</select><input style="flex:1" inputmode="decimal" placeholder="qtd" value="${esc(String(l.qtd??'').replace('.',','))}" oninput="ee.ficha[${i}].qtd=this.value;fichaResumo()"><button class="ib" onclick="ee.ficha.splice(${i},1);fichaRender()">✕</button></div>`).join('');
+  fichaResumo();
+}
+function fichaResumo(){
+  const p=produtos.find(x=>x.id===ee.pid),cf=custoFicha({ficha:ee.ficha.map(l=>({id:l.id,qtd:num(l.qtd)}))}),cm=num(($('#eCusto')||{}).value),c=cm>0?cm:cf,pv=precoBase(p);
+  $('#eResumo').innerHTML=`<div class="sm">Custo pela ficha técnica: <b>${brl(cf)}</b></div><div class="sm">Custo usado: <b>${brl(c)}</b>${pv>0&&c>0?` · venda ${(p.variacoes||[]).length?'a partir de ':''}${brl(pv)} · <b style="color:${pv-c<0?'var(--al)':'var(--ok)'}">lucro ${brl(pv-c)} (${Math.round((pv-c)/pv*100)}%)</b>`:''}</div>`;
+}
+async function salvarEstoque(){
+  const pid=ee.pid,e=estoque[pid]||{},p=produtos.find(x=>x.id===pid),ctrl=$('#eCtrl').checked,qtd=num($('#eQtd').value);
+  const cv={},ca={};
+  document.querySelectorAll('.eCV').forEach(i=>{const v=num(i.value);if(v>0)cv[i.dataset.n]=v});
+  document.querySelectorAll('.eCA').forEach(i=>{const v=num(i.value);if(v>0)ca[i.dataset.n]=v});
+  const d={controla:ctrl,qtd:ctrl?qtd:(+e.qtd||0),minimo:num($('#eMin').value),custo:num($('#eCusto').value),custoVar:cv,custoAd:ca,
+    ficha:ee.ficha.filter(l=>l.id&&num(l.qtd)>0).map(l=>({id:l.id,qtd:num(l.qtd)})),atualizadoMs:Date.now()};
+  const b=db.batch(),pr=lojaRef().collection('produtos').doc(pid);
+  if(ctrl){
+    const ant=e.controla?(+e.qtd||0):0;
+    if(qtd!==ant||!e.controla)b.set(lojaRef().collection('movEstoque').doc(),{tipo:'ajuste',ref:e.controla?'Ajuste manual':'Início do controle',itens:[{nome:p.nome,qtd:r4(qtd-ant)}],ms:Date.now(),por:user.email});
+    if(qtd<=0&&!p.esgotado)b.update(pr,{esgotado:true,esgotadoAuto:true});
+    if(qtd>0&&p.esgotadoAuto)b.update(pr,{esgotado:false,esgotadoAuto:false});
+  }else if(p.esgotadoAuto)b.update(pr,{esgotado:false,esgotadoAuto:false});
+  b.set(lojaRef().collection('estoque').doc(pid),d);
+  try{await b.commit();fecharModal();toast(ctrl&&qtd<=0?'Salvo. Estoque zerado: produto marcado como esgotado':'Salvo')}catch(err){toast('Erro: '+err.message)}
+}
+function entradaProd(pid){
+  const p=produtos.find(x=>x.id===pid),e=estoque[pid]||{};
+  modal(`<h2>📥 Entrada · ${esc(p.nome)}</h2><p class="mut sm">Compra, produção do dia ou reposição. Estoque atual: <b>${fmtQ(e.qtd)}</b></p>
+  <label>Quantidade que entrou</label><input id="enQ" inputmode="decimal">
+  ${(p.variacoes||[]).length?'':`<label>Custo unitário desta entrada (R$, opcional)</label><input id="enC" inputmode="decimal" placeholder="Atualiza o custo pela média"><p class="mut sm">Custo atual: ${brl(e.custo)}</p>`}
+  <label>Observação</label><input id="enO" placeholder="Ex.: produção do almoço, NF 123">
+  <button class="btn pri big" onclick="salvarEntrada('produto','${pid}')">Confirmar entrada</button>`);
+}
+function entradaInsumo(id){
+  const s=insumos.find(x=>x.id===id),un=esc(s.unidade||'un');
+  modal(`<h2>📥 Entrada · ${esc(s.nome)}</h2><p class="mut sm">Estoque atual: <b>${fmtQ(s.qtd)} ${un}</b> · custo ${brl(s.custo)}/${un}</p>
+  <label>Quantidade que entrou (${un})</label><input id="enQ" inputmode="decimal">
+  <label>Valor total pago (R$, opcional)</label><input id="enT" inputmode="decimal" placeholder="Atualiza o custo pela média">
+  <label>Observação</label><input id="enO" placeholder="Ex.: Atacadão, NF 123">
+  <button class="btn pri big" onclick="salvarEntrada('insumo','${id}')">Confirmar entrada</button>`);
+}
+async function salvarEntrada(tipo,id){
+  const q=num($('#enQ').value);if(!(q>0))return toast('Informe a quantidade');
+  const obs=(($('#enO')||{}).value||'').trim(),b=db.batch();
+  const media=(qa,ca,qn,cn)=>qa>0&&ca>0?r4((qa*ca+qn*cn)/(qa+qn)):r4(cn);
+  let nome,un='';
+  if(tipo==='produto'){
+    const p=produtos.find(x=>x.id===id),e=estoque[id]||{},cn=num(($('#enC')||{}).value);nome=p.nome;
+    const upd={qtd:INC(q),controla:true};if(cn>0)upd.custo=media(Math.max(0,+e.qtd||0),+e.custo||0,q,cn);
+    b.set(lojaRef().collection('estoque').doc(id),upd,{merge:true});
+    if(p.esgotadoAuto&&(+e.qtd||0)+q>0)b.update(lojaRef().collection('produtos').doc(id),{esgotado:false,esgotadoAuto:false});
+  }else{
+    const s=insumos.find(x=>x.id===id),tot=num(($('#enT')||{}).value),cn=tot>0?tot/q:0;nome=s.nome;un=s.unidade||'';
+    const upd={qtd:INC(q)};if(cn>0)upd.custo=media(Math.max(0,+s.qtd||0),+s.custo||0,q,cn);
+    b.update(lojaRef().collection('insumos').doc(id),upd);
+  }
+  b.set(lojaRef().collection('movEstoque').doc(),{tipo:'entrada',ref:'Entrada',obs,itens:[{nome,qtd:q,un}],ms:Date.now(),por:user.email});
+  try{await b.commit();fecharModal();toast('Entrada registrada')}catch(e){toast('Erro: '+e.message)}
+}
+function editarInsumo(id){
+  const s=id?insumos.find(x=>x.id===id):{nome:'',unidade:'kg',qtd:0,minimo:0,custo:0};
+  modal(`<h2>${id?'Editar':'Novo'} insumo</h2>
+  <label>Nome</label><input id="iNome" value="${esc(s.nome)}" placeholder="Ex.: Arroz, Feijão, Marmitex nº 8">
+  <div class="row2"><div style="flex:1"><label>Unidade</label><select id="iUn">${['kg','g','L','ml','un','pct','cx','dz'].map(u=>`<option ${u===(s.unidade||'kg')?'selected':''}>${u}</option>`).join('')}</select></div><div style="flex:1"><label>Custo por unidade (R$)</label><input id="iCusto" inputmode="decimal" value="${fmtNum(s.custo)}" placeholder="Ex.: 5,49"></div></div>
+  <div class="row2"><div style="flex:1"><label>Quantidade atual</label><input id="iQtd" inputmode="decimal" value="${fmtNum(s.qtd)||0}"></div><div style="flex:1"><label>Avisar quando chegar em</label><input id="iMin" inputmode="decimal" value="${fmtNum(s.minimo)}" placeholder="0 = não avisar"></div></div>
+  <div class="row"><button class="btn pri" style="flex:1" onclick="salvarInsumo(${id?`'${id}'`:'null'})">Salvar</button>${id?`<button class="btn" onclick="entradaInsumo('${id}')">📥 Entrada</button><button class="btn danger" onclick="excluirInsumo('${id}')">Excluir</button>`:''}</div>`);
+}
+async function salvarInsumo(id){
+  const nome=$('#iNome').value.trim();if(!nome)return toast('Informe o nome');
+  const s=id?insumos.find(x=>x.id===id):{},qtd=num($('#iQtd').value);
+  const d={nome,unidade:$('#iUn').value,custo:num($('#iCusto').value),minimo:num($('#iMin').value),qtd,atualizadoMs:Date.now()};
+  const b=db.batch(),ref=id?lojaRef().collection('insumos').doc(id):lojaRef().collection('insumos').doc(),ant=id?(+s.qtd||0):0;
+  b.set(ref,d,{merge:true});
+  if(qtd!==ant)b.set(lojaRef().collection('movEstoque').doc(),{tipo:'ajuste',ref:id?'Ajuste manual':'Cadastro do insumo',itens:[{nome,qtd:r4(qtd-ant),un:d.unidade}],ms:Date.now(),por:user.email});
+  try{await b.commit();fecharModal();toast('Insumo salvo')}catch(e){toast('Erro: '+e.message)}
+}
+async function excluirInsumo(id){
+  const usados=produtos.filter(p=>((estoque[p.id]||{}).ficha||[]).some(l=>l.id===id)).map(p=>p.nome);
+  if(!confirm(usados.length?`Este insumo está na ficha técnica de: ${usados.join(', ')}. Excluir mesmo assim?`:'Excluir este insumo?'))return;
+  try{await lojaRef().collection('insumos').doc(id).delete();fecharModal();toast('Insumo excluído')}catch(e){toast('Erro: '+e.message)}
+}
 
 // ---------- Relatório ----------
 let relDe=null,relAte=null,relCache=[];
@@ -406,7 +841,8 @@ async function gerarRel(){
   const pf={},it={},pd={};
   ok.forEach(p=>{const f=(p.pagamento||{}).forma||'?';pf[f]=pf[f]||{n:0,v:0};pf[f].n++;pf[f].v+=+p.total||0;
     const d=new Date(p.criadoMs).toLocaleDateString('pt-BR');pd[d]=pd[d]||{n:0,v:0};pd[d].n++;pd[d].v+=+p.total||0;
-    (p.itens||[]).forEach(i=>{const k=i.nome+(i.variacao?' ('+i.variacao+')':'');it[k]=it[k]||{q:0,v:0};it[k].q+=+i.qtd||0;it[k].v+=+i.total||0})});
+    (p.itens||[]).forEach(i=>{const k=i.nome+(i.variacao?' ('+i.variacao+')':'');it[k]=it[k]||{q:0,v:0,c:0};it[k].q+=+i.qtd||0;it[k].v+=+i.total||0;it[k].c+=custoItem(i)*(+i.qtd||0)})});
+  const cmv=Object.values(it).reduce((t,x)=>t+x.c,0),lucro=sub-cmv,temCusto=cmv>0;
   const top=Object.entries(it).sort((a,b)=>b[1].q-a[1].q);
   $('#relOut').innerHTML=`<div class="stats">
    <div class="stat"><div class="mut sm">Faturamento</div><div class="v">${brl(fat)}</div></div>
@@ -414,16 +850,19 @@ async function gerarRel(){
    <div class="stat"><div class="mut sm">Ticket médio</div><div class="v">${brl(ok.length?fat/ok.length:0)}</div></div>
    <div class="stat"><div class="mut sm">Taxas de entrega</div><div class="v">${brl(tx)}</div><div class="mut sm">${ent} entrega(s) · ${ok.length-ent} retirada(s)</div></div>
    <div class="stat"><div class="mut sm">Produtos</div><div class="v">${brl(sub)}</div></div>
+   <div class="stat"><div class="mut sm">Custo dos produtos</div><div class="v">${brl(cmv)}</div></div>
+   <div class="stat"><div class="mut sm">Lucro bruto</div><div class="v" style="color:${lucro<0?'var(--al)':'var(--ok)'}">${brl(lucro)}</div><div class="mut sm">margem ${sub?Math.round(lucro/sub*100):0}%</div></div>
    <div class="stat"><div class="mut sm">Não marcado como pago</div><div class="v" style="color:${aReceber?'var(--al)':'inherit'}">${brl(aReceber)}</div></div></div>
+  ${temCusto?'':'<div class="card mut sm">💡 Cadastre o preço de custo dos produtos na aba 📦 Estoque para ver o lucro.</div>'}
   <div class="card"><h4>Por forma de pagamento</h4><table>${Object.entries(pf).map(([k,v])=>`<tr><td>${FORMAS[k]||k}</td><td class="r">${v.n}</td><td class="r">${brl(v.v)}</td></tr>`).join('')||'<tr><td class="mut">Sem vendas</td></tr>'}</table></div>
-  <div class="card"><h4>Mais vendidos</h4><table><tr><th>Item</th><th class="r">Qtd</th><th class="r">Total</th></tr>${top.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${v.q}</td><td class="r">${brl(v.v)}</td></tr>`).join('')}</table></div>
+  <div class="card"><h4>Mais vendidos</h4><table><tr><th>Item</th><th class="r">Qtd</th><th class="r">Total</th><th class="r">Lucro</th></tr>${top.map(([k,v])=>`<tr><td>${esc(k)}</td><td class="r">${v.q}</td><td class="r">${brl(v.v)}</td><td class="r">${v.c?brl(v.v-v.c):'—'}</td></tr>`).join('')}</table><p class="mut sm" style="margin-top:6px">Lucro calculado com o custo cadastrado hoje. A taxa de entrega não entra no lucro dos produtos.</p></div>
   ${Object.keys(pd).length>1?`<div class="card"><h4>Por dia</h4><table>${Object.entries(pd).map(([k,v])=>`<tr><td>${k}</td><td class="r">${v.n} ped.</td><td class="r">${brl(v.v)}</td></tr>`).join('')}</table></div>`:''}
   <button class="btn big" onclick="baixarCSV()">⬇️ Baixar planilha (CSV)</button>`;
 }
 function baixarCSV(){
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"',n=v=>String((+v||0).toFixed(2)).replace('.',',');
   const L=[['Numero','Data','Hora','Cliente','Telefone','Tipo','Endereco','Itens','Subtotal','Taxa','Total','Pagamento','Pago','Status'].join(';')];
-  relCache.forEach(p=>{const c=p.cliente||{},d=new Date(p.criadoMs);L.push([p.numero,d.toLocaleDateString('pt-BR'),hora(p.criadoMs),q(c.nome),q(c.tel),p.tipo,q(endTxt(c)),q((p.itens||[]).map(i=>i.qtd+'x '+i.nome+(i.variacao?' ('+i.variacao+')':'')).join(', ')),n(p.subtotal),n(p.taxa),n(p.total),q(((FORMAS[(p.pagamento||{}).forma]||'').replace(/^\S+ /,''))),p.pago?'Sim':'Nao',stLabel(p)].join(';'))});
+  relCache.forEach(p=>{const c=p.cliente||{},d=new Date(p.criadoMs);L.push([p.numero,d.toLocaleDateString('pt-BR'),hora(p.criadoMs),q(c.nome),q(c.tel),p.tipo,q(endTxt(c)),q((p.itens||[]).map(i=>i.qtd+'x '+i.nome+(i.variacao?' ('+i.variacao+')':'')+((i.escolhas||[]).length?' ['+fmtEscolhas(i)+']':'')).join(', ')),n(p.subtotal),n(p.taxa),n(p.total),q(((FORMAS[(p.pagamento||{}).forma]||'').replace(/^\S+ /,''))),p.pago?'Sim':'Nao',stLabel(p)].join(';'))});
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+L.join('\n')],{type:'text/csv;charset=utf-8'}));a.download=`pedidos_${lojaId}_${relDe}_a_${relAte}.csv`;a.click();
 }
 
@@ -439,7 +878,8 @@ function renderAjustes(){
    <label>Endereço (aparece para quem vai retirar)</label><input id="aEnd" value="${esc(L.endereco||'')}">
    <label>Cidade</label><input id="aCid" value="${esc(L.cidade||'')}">
    <label>Horário de funcionamento</label><input id="aHor" value="${esc(L.horario||'')}" placeholder="Seg a Sáb, 10h30 às 14h">
-   <label>Cor do app</label><input id="aCor" type="color" value="${esc(L.cor||'#d9480f')}"></div>
+   <label>Cor do app</label><input id="aCor" type="color" value="${esc(L.cor||'#d9480f')}">
+   <label>Logo</label><div class="fotobox"><div class="logoprev" id="aLogoPrev">${L.logo?`<img src="${esc(L.logo)}" alt="">`:'🍱'}</div><div style="flex:1"><label class="btn" style="margin:0 0 6px;display:flex">🖼️ Enviar logo<input type="file" accept="image/*" style="display:none" onchange="enviarLogo(this)"></label><button class="lnk" onclick="removerLogo()">Remover logo</button><p class="mut sm">Aparece no topo do cardápio e vira o ícone do app no celular dos clientes. Salva na hora.</p></div></div></div>
   <div class="card"><h4>🛵 Entrega e retirada</h4>
    <label class="ck"><input type="checkbox" id="aFaz" ${L.fazEntrega!==false?'checked':''}> Faz entrega</label>
    <label class="ck"><input type="checkbox" id="aRet" ${L.aceitaRetirada?'checked':''}> Aceita retirada no local</label>
@@ -447,6 +887,9 @@ function renderAjustes(){
    <label>Entrega grátis em pedidos a partir de (R$)</label><input id="aGratis" inputmode="decimal" value="${fmtNum(L.freteGratisAcima)}" placeholder="Vazio = nunca">
    <label>Pedido mínimo (R$)</label><input id="aMin" inputmode="decimal" value="${fmtNum(L.pedidoMinimo)}" placeholder="Vazio = sem mínimo">
    <label>Tempo estimado de entrega</label><input id="aTempo" value="${esc(L.tempoEntrega||'')}" placeholder="40 a 60 min"></div>
+  <div class="card"><h4>⏰ Horário e encomendas</h4>
+   <label>Aceitar pedidos do dia até</label><input id="aLimite" type="time" value="${esc(L.horaLimite||'')}"><p class="mut sm">Vazio = enquanto a chave "Aberto" estiver ligada. Depois do horário, o cliente não consegue pedir para hoje.</p>
+   <label class="ck"><input type="checkbox" id="aEnc" ${L.aceitaEncomenda?'checked':''}> Aceitar encomendas para amanhã</label><p class="mut sm">O cliente vê o cardápio de amanhã (se já estiver publicado) e pode encomendar, mesmo com a loja fechada. As encomendas aparecem em Pedidos → 📅 Encomendas.</p></div>
   <div class="card"><h4>💳 Formas de pagamento</h4>
    <label class="ck"><input type="checkbox" id="fDin" ${f.dinheiro?'checked':''}> Dinheiro na entrega/retirada (pergunta o troco)</label>
    <label class="ck"><input type="checkbox" id="fCar" ${f.cartao?'checked':''}> Cartão na maquininha</label>
@@ -469,7 +912,7 @@ function sair(){localStorage.removeItem('mm_super_loja');auth.signOut()}
 async function salvarAjustes(){
   const g=id=>$('#'+id).value.trim(),c=id=>$('#'+id).checked;
   const d={nome:g('aNome'),whatsapp:g('aWa'),endereco:g('aEnd'),cidade:g('aCid'),horario:g('aHor'),cor:g('aCor'),fazEntrega:c('aFaz'),aceitaRetirada:c('aRet'),
-    taxaEntrega:num(g('aTaxa')),freteGratisAcima:num(g('aGratis')),pedidoMinimo:num(g('aMin')),tempoEntrega:g('aTempo'),
+    taxaEntrega:num(g('aTaxa')),freteGratisAcima:num(g('aGratis')),pedidoMinimo:num(g('aMin')),tempoEntrega:g('aTempo'),horaLimite:g('aLimite'),aceitaEncomenda:c('aEnc'),
     formas:{dinheiro:c('fDin'),cartao:c('fCar'),pix:c('fPix'),pixMP:c('fMP')},pixChave:g('aPixCh'),pixNome:g('aPixNome'),pixCidade:g('aPixCid')};
   const tok=g('aMPTok');
   if(!d.nome)return toast('Informe o nome');
