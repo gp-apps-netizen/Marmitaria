@@ -7,6 +7,8 @@ window.temaAtual=function(){try{return localStorage.getItem('gpx_tema')||'auto'}
 window.definirTema=function(t){try{localStorage.setItem('gpx_tema',t)}catch(e){}ap();if(window.aoMudarTema)window.aoMudarTema()};
 ap();try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',ap)}catch(e){}})();</script>
 
+
+
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#d9480f">
 <title>Pedir marmita</title>
@@ -112,6 +114,10 @@ textarea{resize:vertical}
 
 
 
+
+
+
+
 /* ===== TEMA ESCURO (gerado) ===== */
 :root{--card2:#f1f3f5}
 html[data-tema="escuro"]{--bg:#141210;--card:#1f1b18;--card2:#2a2420;--tx:#f1ebe5;--mut:#a89c90;--bd:#3a322c;--ok:#51cf66;--al:#ff6b6b;color-scheme:dark}
@@ -133,6 +139,37 @@ html[data-tema="escuro"] .seg button.on{background:#3b2a17}
 html[data-tema="escuro"] .steps li span{background:var(--card2)}
 html[data-tema="escuro"] .steps li:not(:last-child)::after{background:var(--card2)}
 html[data-tema="escuro"] .okbox{background:#1c3524;border-color:#2f5c3a}
+html[data-tema="escuro"] .hdr{background:var(--pri);color:#fff}
+html[data-tema="escuro"] .hbtn{background:rgba(255,255,255,.18);color:#fff}
+html[data-tema="escuro"] .badge.ok{color:var(--ok)}
+html[data-tema="escuro"] .badge.off{color:var(--al)}
+html[data-tema="escuro"] .diasel button.on{background:var(--pri);border-color:var(--pri);color:#fff}
+html[data-tema="escuro"] .chips{background:var(--bg)}
+html[data-tema="escuro"] .chip{color:var(--tx)}
+html[data-tema="escuro"] .prod p{color:var(--mut)}
+html[data-tema="escuro"] .pr{color:var(--pri)}
+html[data-tema="escuro"] .prod.esg .pr{color:var(--mut)}
+html[data-tema="escuro"] .vazio{color:var(--mut)}
+html[data-tema="escuro"] #bar{background:var(--pri);color:#fff}
+html[data-tema="escuro"] #barN{background:rgba(255,255,255,.25)}
+html[data-tema="escuro"] #modal{background:rgba(0,0,0,.45)}
+html[data-tema="escuro"] .mut{color:var(--mut)}
+html[data-tema="escuro"] .qty button{color:var(--pri)}
+html[data-tema="escuro"] .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+html[data-tema="escuro"] .btn.wa{background:#25d366;border-color:#25d366;color:#fff}
+html[data-tema="escuro"] .lnk{color:var(--pri)}
+html[data-tema="escuro"] .dica{color:var(--ok)}
+html[data-tema="escuro"] .alerta{color:var(--al)}
+html[data-tema="escuro"] .num{color:var(--pri)}
+html[data-tema="escuro"] .steps li{color:var(--mut)}
+html[data-tema="escuro"] .steps li.done{color:var(--tx)}
+html[data-tema="escuro"] .steps li.done span{background:var(--ok)}
+html[data-tema="escuro"] .steps li.done::after{background:var(--ok)}
+html[data-tema="escuro"] .steps li.cur{color:var(--pri)}
+html[data-tema="escuro"] .steps li.cur span{background:var(--pri)}
+html[data-tema="escuro"] .steps small{color:var(--mut)}
+html[data-tema="escuro"] #toast{background:#212529;color:#fff}
+html[data-tema="escuro"] .fatal{color:var(--mut)}
 html[data-tema="escuro"] [style*="background:#fff;"],html[data-tema="escuro"] [style$="background:#fff"]{background:var(--card)!important}
 html[data-tema="escuro"] [style*="background:#ffffff;"],html[data-tema="escuro"] [style$="background:#ffffff"]{background:var(--card)!important}
 html[data-tema="escuro"] [style*="background:#faf8f6"]{background:var(--card2)!important}
