@@ -183,6 +183,8 @@ let cds={},diaVista=HOJE,escolheuDia=false;
 const dowDe=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d).getDay()};
 const dataCurta=s=>{const[y,m,d]=s.split('-').map(Number);return DIAS[new Date(y,m-1,d).getDay()].slice(0,3).toLowerCase()+' '+String(d).padStart(2,'0')+'/'+String(m).padStart(2,'0')};
 const ehDoDia=p=>p.doDia===true||(p.doDia===undefined&&(p.dias||[]).length>0&&p.dias.length<7);
+const modoV=()=>(loja&&loja.modoMarmita)||'ambos';
+const visivelModo=p=>{const m=modoV(),pronta=!p.montavel&&(ehDoDia(p)||(p.categoria||'')==='Marmitas');return m==='prontas'?!p.montavel:m==='monte'?!pronta:true};
 function noCardapio(p,data){if(!ehDoDia(p))return true;const c=cds[data];if(c&&c.publicado)return (c.itens||[]).includes(p.id);return (p.dias||[]).includes(dowDe(data))}
 function opsDia(p,data){const c=cds[data],at=c&&c.ops&&c.ops[p.id];return (p.grupos||[]).map(g=>({...g,opcoes:(g.opcoes||[]).filter(o=>!at||!at[g.nome]||at[g.nome].includes(o.nome))}))}
 const esgot=p=>diaVista===HOJE&&p.esgotado;
@@ -231,7 +233,7 @@ function render(){
   $('#aviso').innerHTML=h;
   $('#diaSel').innerHTML=podeAmanha()?`<div class="diasel"><button class="${!enc?'on':''}" onclick="verDia('${HOJE}')">Hoje<small>${dataCurta(HOJE)}${encerradoHoje()?' · encerrado':''}</small></button><button class="${enc?'on':''}" onclick="verDia('${AMANHA}')">📅 Amanhã<small>${dataCurta(AMANHA)} · encomenda</small></button></div>`:'';
   // produtos do dia escolhido
-  const ps=produtos.filter(p=>noCardapio(p,D)).sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome));
+  const ps=produtos.filter(p=>noCardapio(p,D)&&visivelModo(p)).sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome));
   const doDia=ps.filter(ehDoDia),resto=ps.filter(p=>!ehDoDia(p));
   const ord=loja.categorias||['Marmitas','Pratos','Porções','Bebidas','Sobremesas','Adicionais'];
   const cats=[...new Set(resto.map(p=>p.categoria||'Outros'))].sort((a,b)=>{const ia=ord.indexOf(a),ib=ord.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)});
@@ -271,7 +273,7 @@ function unitDe(p,vNome,ads,escolhas){
 }
 /* item ainda pode ser pedido no dia escolhido? */
 function itemOk(it,D){
-  const p=produtos.find(x=>x.id===it.pid);if(!p||(D===HOJE&&p.esgotado)||!noCardapio(p,D))return null;
+  const p=produtos.find(x=>x.id===it.pid);if(!p||(D===HOJE&&p.esgotado)||!noCardapio(p,D)||!visivelModo(p))return null;
   if((it.escolhas||[]).length){const gs=opsDia(p,D);for(const e of it.escolhas){const g=gs.find(y=>y.nome===e.g);if(!g||!g.opcoes.some(o=>o.nome===e.nome))return null}}
   return unitDe(p,it.variacao,it.adicionais,it.escolhas);
 }
