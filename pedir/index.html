@@ -294,6 +294,7 @@ const ehDoDia=p=>p.doDia===true||(p.doDia===undefined&&(p.dias||[]).length>0&&p.
 const modoV=()=>(loja&&loja.modoMarmita)||'ambos';
 const visivelModo=p=>{const m=modoV(),pronta=!p.montavel&&(ehDoDia(p)||(p.categoria||'')==='Marmitas');return m==='prontas'?!p.montavel:m==='monte'?!pronta:true};
 function noCardapio(p,data){if(!ehDoDia(p))return true;const c=cds[data];if(c&&c.publicado)return (c.itens||[]).includes(p.id);return (p.dias||[]).includes(dowDe(data))}
+function descDe(p,data){const c=cds[data];return (c&&c.publicado&&c.desc&&c.desc[p.id])||p.descricao||''}
 function opsDia(p,data){const c=cds[data],at=c&&c.ops&&c.ops[p.id];return (p.grupos||[]).map(g=>({...g,opcoes:(g.opcoes||[]).filter(o=>!at||!at[g.nome]||at[g.nome].includes(o.nome))}))}
 const esgot=p=>diaVista===HOJE&&p.esgotado;
 const regraTxt=g=>{const mi=+g.min||0,ma=+g.max||0;if(mi&&ma&&mi===ma)return ma===1?'escolha 1':`escolha ${ma}`;if(ma&&!mi)return `até ${ma} · opcional`;if(ma)return `de ${mi} a ${ma}`;return mi?`mín. ${mi}`:'opcional'};
@@ -355,7 +356,7 @@ function render(){
 function cardProd(p){
   const v=(p.variacoes||[]).length>1||(p.montavel&&(p.grupos||[]).some(g=>(g.opcoes||[]).some(o=>+o.extra>0))),e=esgot(p);
   const desc=p.montavel?opsDia(p,diaVista).filter(g=>g.opcoes.length).map(g=>`${g.nome}: ${g.opcoes.map(o=>o.nome).join(', ')}`).join(' · '):'';
-  return `<div class="prod ${e?'esg':''}" onclick="abrirProd('${p.id}')"><div class="pi"><b>${p.montavel?'🍱 ':''}${esc(p.nome)}</b>${p.descricao?`<p>${esc(p.descricao)}</p>`:''}${desc?`<p>${esc(desc)}</p>`:''}<span class="pr">${e?'Esgotado':(v?'a partir de ':'')+brl(precoBase(p))}</span></div>${p.foto?`<img src="${esc(p.foto)}" loading="lazy" alt="">`:''}</div>`;
+  return `<div class="prod ${e?'esg':''}" onclick="abrirProd('${p.id}')"><div class="pi"><b>${p.montavel?'🍱 ':''}${esc(p.nome)}</b>${descDe(p,diaVista)?`<p>${esc(descDe(p,diaVista))}</p>`:''}${desc?`<p>${esc(desc)}</p>`:''}<span class="pr">${e?'Esgotado':(v?'a partir de ':'')+brl(precoBase(p))}</span></div>${p.foto?`<img src="${esc(p.foto)}" loading="lazy" alt="">`:''}</div>`;
 }
 
 // ---------- Produto ----------
@@ -364,7 +365,7 @@ function abrirProd(id){
   const p=produtos.find(x=>x.id===id);if(!p||esgot(p))return;
   pm={p,vi:0,ads:[],q:1,esc:{},grupos:p.montavel?opsDia(p,diaVista).filter(g=>g.opcoes.length):[]};
   const vars=p.variacoes||[],ads=p.adicionais||[];
-  modal(`${p.foto?`<img class="mimg" src="${esc(p.foto)}" alt="">`:''}<h2>${esc(p.nome)}</h2>${p.descricao?`<p class="mut">${esc(p.descricao)}</p>`:''}
+  modal(`${p.foto?`<img class="mimg" src="${esc(p.foto)}" alt="">`:''}<h2>${esc(p.nome)}</h2>${descDe(p,diaVista)?`<p class="mut">${esc(descDe(p,diaVista))}</p>`:''}
   ${vars.length?`<h4>Escolha uma opção</h4>${vars.map((v,i)=>`<label class="opt"><input type="radio" name="var" ${i===0?'checked':''} onchange="pm.vi=${i};pmTot()"><span>${esc(v.nome)}</span><b>${brl(v.preco)}</b></label>`).join('')}`:''}
   ${pm.grupos.map((g,gi)=>`<h4>${esc(g.nome)} <span class="mut sm" style="font-weight:500">· ${regraTxt(g)}</span></h4>${g.opcoes.map((o,oi)=>`<label class="opt"><input type="${+g.max===1?'radio':'checkbox'}" name="g${gi}" onchange="pmEsc(${gi},${oi},this)"><span>${esc(o.nome)}</span>${+o.extra?`<b>+ ${brl(o.extra)}</b>`:''}</label>`).join('')}`).join('')}
   ${ads.length?`<h4>Adicionais</h4>${ads.map((a,i)=>`<label class="opt"><input type="checkbox" onchange="pmAd(${i},this.checked)"><span>${esc(a.nome)}</span><b>+ ${brl(a.preco)}</b></label>`).join('')}`:''}
