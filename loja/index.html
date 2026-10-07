@@ -506,8 +506,8 @@ function renderCardapio(){
 function cdNovo(data,base){
   // base: documento a copiar; sem base, preenche pelos dias habituais
   const dow=dt(data).getDay();
-  if(base)return{itens:[...(base.itens||[])].filter(id=>produtos.some(p=>p.id===id)),qtd:{...(base.qtd||{})},ops:JSON.parse(JSON.stringify(base.ops||{})),aviso:base.aviso||''};
-  return{itens:produtos.filter(p=>ehDoDia(p)&&(p.dias||[]).includes(dow)).map(p=>p.id),qtd:{},ops:{},aviso:''};
+  if(base)return{itens:[...(base.itens||[])].filter(id=>produtos.some(p=>p.id===id)),qtd:{...(base.qtd||{})},ops:JSON.parse(JSON.stringify(base.ops||{})),desc:{...(base.desc||{})},aviso:base.aviso||''};
+  return{itens:produtos.filter(p=>ehDoDia(p)&&(p.dias||[]).includes(dow)).map(p=>p.id),qtd:{},ops:{},desc:{},aviso:''};
 }
 function cdCarregar(){const d=cardapios[cdData];cdEd=d?cdNovo(cdData,d):cdNovo(cdData);cdEd.publicado=!!(d&&d.publicado);cdEd.mexido=false}
 function renderDia(){
@@ -539,6 +539,7 @@ function cdLinha(p,comChave){
   let h=`<div class="card" style="padding:10px 12px;${on?'':'opacity:.65'}"><div class="row2">${p.foto?`<img class="pthumb" src="${esc(p.foto)}" alt="">`:''}<div style="flex:1;min-width:0"><b>${esc(p.nome)}</b><div class="mut sm">${precoTxt(p)}</div></div>${comChave?`<label class="sw"><input type="checkbox" ${on?'checked':''} onchange="cdToggle('${p.id}',this.checked)"><span></span></label>`:''}</div>`;
   if(on){
     h+=`<div class="row2" style="margin-top:6px"><span class="mut sm" style="flex:2">Qtd produzida <span class="mut">(opcional)</span></span><input style="flex:1;margin:0" inputmode="numeric" placeholder="—" value="${cdEd.qtd[p.id]??''}" oninput="cdQtd('${p.id}',this.value)"></div>`;
+    if(!p.montavel)h+=`<label class="sm" style="margin-top:8px">🍽️ O que vem neste dia <span class="mut">(opcional · vazio = descrição do cadastro)</span></label><textarea rows="2" style="margin:2px 0 0" placeholder="${esc(p.descricao||'Ex.: Arroz, feijão, bife acebolado, farofa e salada')}" oninput="cdDesc('${p.id}',this.value)">${esc((cdEd.desc||{})[p.id]||'')}</textarea>`;
     if(p.montavel)(p.grupos||[]).forEach((g,gi)=>{
       const ativas=((cdEd.ops[p.id]||{})[g.nome]);
       h+=`<div style="margin-top:8px"><div class="sm"><b>${esc(g.nome)}</b> <span class="mut">${regraTxt(g)}</span></div><div class="chips" style="flex-wrap:wrap;overflow:visible;padding-bottom:2px">${(g.opcoes||[]).map(o=>{const at=!ativas||ativas.includes(o.nome);return `<button class="chip ${at?'on':''}" onclick="cdOp('${p.id}',${gi},'${esc(o.nome).replace(/'/g,'&#39;')}')">${esc(o.nome)}${+o.extra?' +'+brl(o.extra):''}</button>`}).join('')}<button class="chip" onclick="cdNovaOp('${p.id}',${gi})">+ opção</button></div></div>`;
@@ -550,6 +551,8 @@ const regraTxt=g=>{const mi=+g.min||0,ma=+g.max||0;if(mi&&ma&&mi===ma)return `(e
 function cdMexeu(){if(!cdEd.mexido){cdEd.mexido=true;const c=document.querySelector('#cdBox .card');if(c){c.style.background='#fff9db';c.style.borderColor='#ffe066';c.querySelector('.sm').textContent='✏️ Alterações não publicadas'}}}
 function trocarDia(d){if(cdEd&&cdEd.mexido&&!confirm('Você tem alterações não publicadas neste dia. Trocar mesmo assim?'))return;cdData=d;cdEd=null;renderDia()}
 function cdToggle(pid,on){cdEd.itens=cdEd.itens.filter(x=>x!==pid);if(on)cdEd.itens.push(pid);cdEd.mexido=true;renderDia()}
+function cdDesc(pid,v){cdEd.desc=cdEd.desc||{};if(v.trim())cdEd.desc[pid]=v;else delete cdEd.desc[pid];cdMexeu()}
+function descDia(p,data){const c=cardapios[data];return (c&&c.publicado&&c.desc&&c.desc[p.id])||p.descricao||''}
 function cdQtd(pid,v){const n=parseInt(String(v).replace(/\D/g,''),10);if(n>=0)cdEd.qtd[pid]=n;else delete cdEd.qtd[pid];cdMexeu()}
 function cdOp(pid,gi,nome){
   nome=nome.replace(/&#39;/g,"'");const p=produtos.find(x=>x.id===pid),g=p.grupos[gi];
@@ -566,10 +569,10 @@ async function cdNovaOp(pid,gi){
 }
 function cdCopiar(n){const src=cardapios[somaDias(cdData,n)];if(!src||!src.publicado)return toast(n===-1?'O dia anterior não tem cardápio publicado':'Não há cardápio publicado na semana passada nesse dia');const pub=cdEd.publicado;cdEd=cdNovo(cdData,src);cdEd.data=cdData;cdEd.publicado=pub;cdEd.mexido=true;renderDia();toast('Copiado. Confira e toque em Publicar.')}
 function cdHabituais(){const pub=cdEd.publicado;cdEd=cdNovo(cdData);cdEd.data=cdData;cdEd.publicado=pub;cdEd.mexido=true;renderDia();toast('Preenchido pelos dias habituais')}
-function cdLimpar(){cdEd.itens=[];cdEd.qtd={};cdEd.ops={};cdEd.mexido=true;renderDia()}
+function cdLimpar(){cdEd.itens=[];cdEd.qtd={};cdEd.ops={};cdEd.desc={};cdEd.mexido=true;renderDia()}
 async function publicarDia(){
   const data=cdData,doc={data,publicado:true,itens:cdEd.itens.filter(id=>produtos.some(p=>p.id===id)),qtd:{},ops:cdEd.ops,aviso:(cdEd.aviso||'').trim(),atualizadoMs:Date.now(),por:user.email};
-  doc.itens.forEach(id=>{if(cdEd.qtd[id]>=0)doc.qtd[id]=cdEd.qtd[id]});
+  doc.desc={};doc.itens.forEach(id=>{if(cdEd.qtd[id]>=0)doc.qtd[id]=cdEd.qtd[id];const t=((cdEd.desc||{})[id]||'').trim();if(t)doc.desc[id]=t});
   produtos.filter(p=>p.montavel&&!ehDoDia(p)&&cdEd.qtd[p.id]>=0).forEach(p=>doc.qtd[p.id]=cdEd.qtd[p.id]);
   const ant=cardapios[data];doc.estoqueAplicado=!!(ant&&ant.estoqueAplicado&&JSON.stringify(ant.qtd||{})===JSON.stringify(doc.qtd));
   if(!doc.itens.length&&!confirm('Nenhum prato do dia marcado. Publicar assim mesmo (só os itens fixos aparecem)?'))return;
@@ -628,7 +631,7 @@ function textoDivulgar(data){
   const L=itensDoDia(data),c=cardapios[data]||{},aviso=data===hojeStr()?(loja.avisoDia||c.aviso):c.aviso;
   let t=`🍱 *${loja.nome}*\n📅 *Cardápio de ${rotDia(data)==='Hoje'?'hoje':rotDia(data)==='Amanhã'?'amanhã':dataLonga(data)}*${rotDia(data)==='Hoje'||rotDia(data)==='Amanhã'?' ('+dataLonga(data)+')':''}\n`;
   if(aviso)t+=`\n${aviso}\n`;
-  L.forEach(({p,grupos})=>{t+=`\n• *${p.nome}* – ${precoTxt(p)}`;if(p.descricao&&!grupos.length)t+=`\n   ${p.descricao}`;grupos.forEach(g=>t+=`\n   ${g.nome}: ${g.ops.join(', ')}`)});
+  L.forEach(({p,grupos})=>{t+=`\n• *${p.nome}* – ${precoTxt(p)}`;if(descDia(p,data)&&!grupos.length)t+=`\n   ${descDia(p,data)}`;grupos.forEach(g=>t+=`\n   ${g.nome}: ${g.ops.join(', ')}`)});
   if(!L.length)t+='\n(cardápio ainda não montado)';
   if(loja.horaLimite)t+=`\n\n⏰ Pedidos até ${loja.horaLimite}`;
   if(loja.fazEntrega!==false)t+=`\n🛵 Entrega ${+loja.taxaEntrega>0?brl(loja.taxaEntrega):'grátis'}`;
@@ -645,7 +648,7 @@ async function imagemDivulgar(data){
   const L=itensDoDia(data),c2=cardapios[data]||{},aviso=data===hojeStr()?(loja.avisoDia||c2.aviso):c2.aviso;
   let y=360;
   if(aviso){x.fillStyle='#fff3bf';rr(x,60,y-10,W-120,90,24);x.fill();x.fillStyle='#5c3d00';x.font='bold 40px system-ui,sans-serif';fitText(x,'📣 '+aviso,90,y+35,W-180);y+=120}
-  const linhas=[];L.forEach(({p,grupos})=>{linhas.push({t:p.nome,pr:precoTxt(p),b:true});grupos.forEach(g=>linhas.push({t:g.nome+': '+g.ops.join(', ')}));if(!grupos.length&&p.descricao)linhas.push({t:p.descricao})});
+  const linhas=[];L.forEach(({p,grupos})=>{linhas.push({t:p.nome,pr:precoTxt(p),b:true});grupos.forEach(g=>linhas.push({t:g.nome+': '+g.ops.join(', ')}));if(!grupos.length&&descDia(p,data))linhas.push({t:descDia(p,data)})});
   if(!linhas.length)linhas.push({t:'Cardápio ainda não montado',b:true});
   // desenha (ou só mede, se dry) a lista com fonte fs; devolve o y final
   const lista=(fs,y0,dry)=>{let yy=y0;const T=(t,X,Y,mw)=>{if(!dry)fitText(x,t,X,Y,mw)};
