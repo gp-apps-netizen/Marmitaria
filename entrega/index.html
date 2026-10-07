@@ -7,6 +7,8 @@ window.temaAtual=function(){try{return localStorage.getItem('gpx_tema')||'auto'}
 window.definirTema=function(t){try{localStorage.setItem('gpx_tema',t)}catch(e){}ap();if(window.aoMudarTema)window.aoMudarTema()};
 ap();try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',ap)}catch(e){}})();</script>
 
+
+
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1c7ed6">
 <title>Entregas</title>
@@ -65,6 +67,10 @@ input{width:100%;font:inherit;border:1px solid var(--bd);border-radius:10px;padd
 
 
 
+
+
+
+
 /* ===== TEMA ESCURO (gerado) ===== */
 :root{--card2:#f1f3f5}
 html[data-tema="escuro"]{--bg:#111418;--card:#1b2026;--card2:#252b33;--tx:#e9edf1;--mut:#98a2ad;--bd:#323a44;--ok:#51cf66;--al:#ff6b6b;--warn:#ff922b;color-scheme:dark}
@@ -82,6 +88,16 @@ html[data-tema="escuro"] .t-cobrar{background:#3d1f1f}
 html[data-tema="escuro"] .cob{background:#3b2a17;border:1px solid #6b4a22}
 html[data-tema="escuro"] .cob.pg{background:#1c3524;border-color:#2f5c3a}
 html[data-tema="escuro"] .sheet{background:var(--card)}
+html[data-tema="escuro"] .top{background:var(--pri);color:#fff}
+html[data-tema="escuro"] .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+html[data-tema="escuro"] .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+html[data-tema="escuro"] .btn.lt{color:#fff;border-color:rgba(255,255,255,.5)}
+html[data-tema="escuro"] .mut{color:var(--mut)}
+html[data-tema="escuro"] .tabs button.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+html[data-tema="escuro"] .its{color:var(--mut)}
+html[data-tema="escuro"] .vazio{color:var(--mut)}
+html[data-tema="escuro"] #modal{background:rgba(0,0,0,.45)}
+html[data-tema="escuro"] #toast{background:#212529;color:#fff}
 html[data-tema="escuro"] [style*="background:#fff;"],html[data-tema="escuro"] [style$="background:#fff"]{background:var(--card)!important}
 html[data-tema="escuro"] [style*="background:#ffffff;"],html[data-tema="escuro"] [style$="background:#ffffff"]{background:var(--card)!important}
 html[data-tema="escuro"] [style*="background:#faf8f6"]{background:var(--card2)!important}
