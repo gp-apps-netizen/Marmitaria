@@ -378,6 +378,13 @@ const DIASL=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 const diasTxt=d=>!d||!d.length||d.length===7?'Todos os dias':[...d].sort().map(i=>DIASC[i]).join(', ');
 const precoTxt=p=>(p.variacoes||[]).length?p.variacoes.map(v=>`${v.nome} ${brl(v.preco)}`).join(' · '):brl(p.preco);
 const ehDoDia=p=>p.doDia===true||(p.doDia===undefined&&(p.dias||[]).length>0&&p.dias.length<7);
+/* Como a marmitaria vende: 'prontas' (pratos prontos), 'monte' (cliente monta) ou 'ambos' */
+const modoV=()=>(loja&&loja.modoMarmita)||'ambos';
+const ehPronta=p=>!p.montavel&&(ehDoDia(p)||(p.categoria||'')==='Marmitas');
+const visivelModo=p=>modoV()==='prontas'?!p.montavel:modoV()==='monte'?!ehPronta(p):true;
+const MODOS={prontas:'🍽️ Marmitas prontas',monte:'🍱 O cliente monta a sua',ambos:'🍽️ + 🍱 As duas opções'};
+const GRUPOS_MODELO=()=>[{nome:'Proteína',min:1,max:1,opcoes:[{nome:'Frango grelhado',extra:0},{nome:'Bife acebolado',extra:0}]},{nome:'Acompanhamentos',min:1,max:3,opcoes:['Arroz','Feijão','Farofa','Macarrão','Purê'].map(n=>({nome:n,extra:0}))},{nome:'Salada',min:0,max:1,opcoes:[{nome:'Salada verde',extra:0}]}];
+function novoMonte(){editarProd(null,{nome:'Monte sua marmita',descricao:'',categoria:'Marmitas',doDia:false,montavel:true,dias:[],preco:0,variacoes:[{nome:'P',preco:18},{nome:'G',preco:22}],adicionais:[],ativo:true,grupos:GRUPOS_MODELO()})}
 const somaDias=(s,n)=>{const d=dt(s);d.setDate(d.getDate()+n);return dStr(d)};
 const rotDia=s=>{const h=hojeStr();if(s===h)return 'Hoje';if(s===somaDias(h,1))return 'Amanhã';const d=dt(s);return DIASC[d.getDay()]+' '+String(d.getDate()).padStart(2,'0')};
 const dataLonga=s=>{const d=dt(s);return DIASL[d.getDay()]+', '+String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')};
@@ -394,7 +401,7 @@ function renderCardapio(){
   const esg=produtos.filter(p=>p.esgotado).length;
   el.innerHTML=abas+`<div class="row"><button class="btn pri" onclick="editarProd()">+ Novo produto</button>${produtos.length?'':'<button class="btn" onclick="carregarExemplo()">🧪 Carregar exemplo</button>'}${esg?`<button class="btn" onclick="reporEsgotados()">↺ Repor ${esg} esgotado(s)</button>`:''}</div>
   <p class="mut sm">Aqui fica o catálogo completo. <b>Pratos do dia</b> só aparecem para o cliente quando entram no <b>Cardápio do dia</b>; <b>fixos</b> aparecem sempre. A chave verde = disponível.</p>
-  ${nomes.map(c=>`<h3 class="sec">${esc(c)}</h3>${cats[c].sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome)).map(p=>`<div class="pr-row ${p.ativo===false?'inat':''}">${p.foto?`<img class="pthumb" src="${esc(p.foto)}" alt="" onclick="editarProd('${p.id}')">`:''}<div style="flex:1;min-width:0" onclick="editarProd('${p.id}')"><b>${esc(p.nome)}</b> ${ehDoDia(p)?'<span class="tag t-preparo">do dia</span>':'<span class="tag">fixo</span>'}${p.montavel?' <span class="tag t-saiu">monte</span>':''}${p.esgotado?' <span class="tag t-novo">Esgotado</span>':''}${p.ativo===false?' <span class="tag">Oculto</span>':''}<div class="mut sm">${precoTxt(p)}${ehDoDia(p)&&(p.dias||[]).length?' · habitual: '+diasTxt(p.dias):''}${(estoque[p.id]||{}).controla?` · 📦 ${fmtQ(estoque[p.id].qtd)}`:''}</div></div><label class="sw"><input type="checkbox" ${p.esgotado?'':'checked'} onchange="setEsg('${p.id}',!this.checked)"><span></span></label></div>`).join('')}`).join('')||'<p class="vazio">Nenhum produto ainda. Cadastre as marmitas, bebidas e sobremesas, ou toque em 🧪 Carregar exemplo para testar.</p>'}`;
+  ${nomes.map(c=>`<h3 class="sec">${esc(c)}</h3>${cats[c].sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome)).map(p=>`<div class="pr-row ${p.ativo===false?'inat':''}">${p.foto?`<img class="pthumb" src="${esc(p.foto)}" alt="" onclick="editarProd('${p.id}')">`:''}<div style="flex:1;min-width:0" onclick="editarProd('${p.id}')"><b>${esc(p.nome)}</b> ${ehDoDia(p)?'<span class="tag t-preparo">do dia</span>':'<span class="tag">fixo</span>'}${p.montavel?' <span class="tag t-saiu">monte</span>':''}${p.esgotado?' <span class="tag t-novo">Esgotado</span>':''}${p.ativo===false?' <span class="tag">Oculto</span>':''}${visivelModo(p)?'':' <span class="tag">fora do modo</span>'}<div class="mut sm">${precoTxt(p)}${ehDoDia(p)&&(p.dias||[]).length?' · habitual: '+diasTxt(p.dias):''}${(estoque[p.id]||{}).controla?` · 📦 ${fmtQ(estoque[p.id].qtd)}`:''}</div></div><label class="sw"><input type="checkbox" ${p.esgotado?'':'checked'} onchange="setEsg('${p.id}',!this.checked)"><span></span></label></div>`).join('')}`).join('')||'<p class="vazio">Nenhum produto ainda. Cadastre as marmitas, bebidas e sobremesas, ou toque em 🧪 Carregar exemplo para testar.</p>'}`;
 }
 
 /* ===== Cardápio do dia ===== */
@@ -410,16 +417,19 @@ function renderDia(){
   const h=hojeStr();if(!cdData||cdData<h)cdData=h;
   if(!cdEd||cdEd.data!==cdData||!cdEd.mexido){cdCarregar();cdEd.data=cdData}
   const datas=[...Array(7)].map((_,i)=>somaDias(h,i));
-  const doDia=produtos.filter(p=>ehDoDia(p)&&p.ativo!==false).sort((a,b)=>String(a.categoria).localeCompare(b.categoria)||(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome));
-  const fixosMont=produtos.filter(p=>!ehDoDia(p)&&p.montavel&&p.ativo!==false);
-  const fixos=produtos.filter(p=>!ehDoDia(p)&&!p.montavel&&p.ativo!==false);
+  const modo=modoV(),doDia=produtos.filter(p=>ehDoDia(p)&&p.ativo!==false&&visivelModo(p)).sort((a,b)=>String(a.categoria).localeCompare(b.categoria)||(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome));
+  const fixosMont=produtos.filter(p=>!ehDoDia(p)&&p.montavel&&p.ativo!==false&&visivelModo(p));
+  const fixos=produtos.filter(p=>!ehDoDia(p)&&!p.montavel&&p.ativo!==false&&visivelModo(p));
+  const temMonte=produtos.some(p=>p.montavel&&p.ativo!==false);
   const pub=cardapios[cdData]&&cardapios[cdData].publicado;
   box.innerHTML=`<div class="chips">${datas.map(d=>`<button class="chip ${d===cdData?'on':''}" onclick="trocarDia('${d}')">${rotDia(d)}${cardapios[d]&&cardapios[d].publicado?' ✅':''}</button>`).join('')}</div>
   <div class="card" style="${pub&&!cdEd.mexido?'background:#ebfbee;border-color:#b2f2bb':'background:#fff9db;border-color:#ffe066'}"><b>${dataLonga(cdData)}</b><div class="sm">${pub?(cdEd.mexido?'✏️ Alterações não publicadas':'✅ Publicado — é isso que o cliente vê'):'📝 Ainda não publicado'+(cdData===h?' — o cliente vê só os pratos marcados nos dias habituais':'')}</div></div>
   <div class="row"><button class="btn" onclick="cdCopiar(-1)">↺ Repetir dia anterior</button><button class="btn" onclick="cdCopiar(-7)">↺ Mesmo dia semana passada</button><button class="btn" onclick="cdHabituais()">📅 Dias habituais</button><button class="btn" onclick="cdLimpar()">Limpar</button></div>
   <label>📣 Aviso do dia <span class="mut sm">(aparece no topo do cardápio)</span></label><input id="cdAviso" value="${esc(cdEd.aviso)}" placeholder="Ex.: Hoje tem feijoada! 🍲" oninput="cdEd.aviso=this.value;cdMexeu()">
-  <h3 class="sec">Pratos do dia</h3>
-  ${doDia.length?doDia.map(p=>cdLinha(p,true)).join(''):'<p class="mut sm">Nenhum prato do dia cadastrado. Em 🍱 Produtos, cadastre as marmitas como <b>Prato do dia</b>.</p>'}
+  <p class="mut sm" style="margin:8px 2px 0">Modo: <b>${MODOS[modo]}</b> · <a href="javascript:void 0" onclick="irTab('ajustes')">mudar em Ajustes</a></p>
+  ${modo==='monte'&&!doDia.length?'':`<h3 class="sec">Pratos do dia</h3>
+  ${doDia.length?doDia.map(p=>cdLinha(p,true)).join(''):'<p class="mut sm">Nenhum prato do dia cadastrado. Em 🍱 Produtos, cadastre as marmitas como <b>Prato do dia</b>.</p>'}`}
+  ${modo!=='prontas'&&!temMonte?`<div class="card" style="background:#fff4e6;border-color:#ffd8a8"><b>🍱 Monte sua marmita</b><p class="mut sm" style="margin:4px 0 8px">Crie o produto em que o cliente escolhe a proteína e os acompanhamentos.</p><button class="btn pri" onclick="novoMonte()">+ Criar “Monte sua marmita”</button></div>`:''}
   ${fixosMont.length?`<h3 class="sec">Monte sua marmita (fixo)</h3>${fixosMont.map(p=>cdLinha(p,false)).join('')}`:''}
   ${fixos.length?`<p class="mut sm" style="margin:10px 2px">➕ ${fixos.length} item(ns) fixo(s) aparecem todo dia: ${fixos.slice(0,6).map(p=>esc(p.nome)).join(', ')}${fixos.length>6?'…':''}</p>`:''}
   <button class="btn pri big" onclick="publicarDia()">✅ Publicar cardápio de ${rotDia(cdData).toLowerCase()}</button>
@@ -511,8 +521,8 @@ async function programarSemana(){
 /* ===== Divulgar (imagem + texto) ===== */
 function itensDoDia(data){
   const c=cardapios[data],dow=dt(data).getDay();
-  const doDia=produtos.filter(p=>p.ativo!==false&&ehDoDia(p)&&(c&&c.publicado?(c.itens||[]).includes(p.id):(p.dias||[]).includes(dow)));
-  const mont=produtos.filter(p=>p.ativo!==false&&!ehDoDia(p)&&p.montavel);
+  const doDia=produtos.filter(p=>p.ativo!==false&&ehDoDia(p)&&visivelModo(p)&&(c&&c.publicado?(c.itens||[]).includes(p.id):(p.dias||[]).includes(dow)));
+  const mont=produtos.filter(p=>p.ativo!==false&&!ehDoDia(p)&&p.montavel&&visivelModo(p));
   const opsDe=p=>(p.grupos||[]).map(g=>{const at=c&&c.ops&&c.ops[p.id]&&c.ops[p.id][g.nome];return{nome:g.nome,ops:(g.opcoes||[]).filter(o=>!at||at.includes(o.nome)).map(o=>o.nome)}}).filter(g=>g.ops.length);
   return [...doDia,...mont].map(p=>({p,grupos:p.montavel?opsDe(p):[]}));
 }
@@ -614,7 +624,7 @@ function editarProd(id,base){
   <div class="dias">${DIASC.map((d,i)=>`<label><input type="checkbox" class="pDia" value="${i}" ${(p.dias||[]).includes(i)?'checked':''}>${d}</label>`).join('')}</div></div>
   <label>Preço (R$)</label><input id="pPreco" inputmode="decimal" value="${fmtNum(p.preco)}" placeholder="Deixe vazio se usar tamanhos abaixo">
   <label>Tamanhos <span class="mut sm">(ex.: P, M, G — cada um com seu preço)</span></label><div id="edVars"></div><button class="lnk" onclick="edAdd('vars')">+ adicionar tamanho</button>
-  <label class="ck" style="margin-top:12px"><input type="checkbox" id="pMont" ${ed.montavel?'checked':''} onchange="ed.montavel=this.checked;$('#pMontBox').style.display=this.checked?'':'none';if(this.checked&&!ed.grupos.length)grupoModelo()"> 🍱 <b>Monte sua marmita</b> — o cliente escolhe os itens</label>
+  <label class="ck" style="margin-top:12px;${modoV()==='prontas'&&!ed.montavel?'display:none':''}"><input type="checkbox" id="pMont" ${ed.montavel?'checked':''} onchange="ed.montavel=this.checked;$('#pMontBox').style.display=this.checked?'':'none';if(this.checked&&!ed.grupos.length)grupoModelo()"> 🍱 <b>Monte sua marmita</b> — o cliente escolhe os itens</label>
   <div id="pMontBox" class="sub" style="display:${ed.montavel?'':'none'}"><p class="mut sm">Grupos de escolha, ex.: Proteína (escolha 1), Acompanhamentos (até 3). As opções de cada dia você liga/desliga no Cardápio do dia.</p><div id="edGrupos"></div>
   <div class="row"><button class="lnk" onclick="ed.grupos.push({nome:'',min:0,max:1,opcoes:[]});grupoRender()">+ adicionar grupo</button>${ed.grupos.length?'':'<button class="lnk" onclick="grupoModelo()">Usar modelo pronto</button>'}</div></div>
   <label>Adicionais <span class="mut sm">(ex.: ovo frito + R$ 3,00)</span></label><div id="edAds"></div><button class="lnk" onclick="edAdd('ads')">+ adicionar adicional</button>
@@ -993,7 +1003,10 @@ function renderAjustes(){
   if(!loja)return;
   const L=loja,f=L.formas||{},dono=isDono(),link=linkCli(lojaId);
   $('#t-ajustes').innerHTML=`<div class="card"><h4>🔗 Link de pedidos dos clientes</h4><input readonly value="${esc(link)}" onclick="this.select()"><div class="row"><button class="btn pri" onclick="copiarTxt('${link}')">Copiar</button><button class="btn" onclick="compartilhar()">Compartilhar</button><a class="btn" href="${link}" target="_blank">Abrir</a></div><div id="qrLink" class="qr"></div><p class="mut sm" style="text-align:center">Imprima o QR Code para o balcão, embalagens e panfletos. Divulgue o link no status do WhatsApp e no Instagram.</p></div>
-  ${dono?`<div class="card"><h4>🏪 Dados da marmitaria</h4>
+  ${dono?`<div class="card"><h4>🍱 Como você vende as marmitas</h4>
+   <select id="aModo">${Object.entries(MODOS).map(([k,l])=>`<option value="${k}" ${modoV()===k?'selected':''}>${l}</option>`).join('')}</select>
+   <p class="mut sm"><b>Prontas:</b> os pratos do dia (feijoada, parmegiana…). <b>Cliente monta:</b> ele escolhe proteína, acompanhamentos e salada. Bebidas e sobremesas aparecem sempre.</p></div>
+  <div class="card"><h4>🏪 Dados da marmitaria</h4>
    <label>Nome</label><input id="aNome" value="${esc(L.nome)}">
    <label>WhatsApp da loja (com DDD)</label><input id="aWa" inputmode="tel" value="${esc(L.whatsapp||'')}">
    <label>Endereço (aparece para quem vai retirar)</label><input id="aEnd" value="${esc(L.endereco||'')}">
@@ -1039,7 +1052,7 @@ function compartilhar(){const l=linkCli(lojaId);if(navigator.share)navigator.sha
 function sair(){localStorage.removeItem('mm_super_loja');auth.signOut()}
 async function salvarAjustes(){
   const g=id=>$('#'+id).value.trim(),c=id=>$('#'+id).checked;
-  const d={nome:g('aNome'),whatsapp:g('aWa'),endereco:g('aEnd'),cidade:g('aCid'),horario:g('aHor'),cor:g('aCor'),fazEntrega:c('aFaz'),aceitaRetirada:c('aRet'),
+  const d={modoMarmita:$('#aModo').value,nome:g('aNome'),whatsapp:g('aWa'),endereco:g('aEnd'),cidade:g('aCid'),horario:g('aHor'),cor:g('aCor'),fazEntrega:c('aFaz'),aceitaRetirada:c('aRet'),
     taxaEntrega:num(g('aTaxa')),freteGratisAcima:num(g('aGratis')),pedidoMinimo:num(g('aMin')),tempoEntrega:g('aTempo'),horaLimite:g('aLimite'),aceitaEncomenda:c('aEnc'),pagEntregador:{modo:$('#aPagModo').value,valor:num(g('aPagVal'))},
     formas:{dinheiro:c('fDin'),cartao:c('fCar'),pix:c('fPix'),pixMP:c('fMP')},pixChave:g('aPixCh'),pixNome:g('aPixNome'),pixCidade:g('aPixCid')};
   const tok=g('aMPTok');
