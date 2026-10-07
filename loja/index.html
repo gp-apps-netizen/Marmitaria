@@ -392,9 +392,9 @@ function renderCardapio(){
   const ord=['Marmitas','Pratos','Porções','Bebidas','Sobremesas','Adicionais'];
   const nomes=Object.keys(cats).sort((a,b)=>{const ia=ord.indexOf(a),ib=ord.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b)});
   const esg=produtos.filter(p=>p.esgotado).length;
-  el.innerHTML=abas+`<div class="row"><button class="btn pri" onclick="editarProd()">+ Novo produto</button>${esg?`<button class="btn" onclick="reporEsgotados()">↺ Repor ${esg} esgotado(s)</button>`:''}</div>
+  el.innerHTML=abas+`<div class="row"><button class="btn pri" onclick="editarProd()">+ Novo produto</button>${produtos.length?'':'<button class="btn" onclick="carregarExemplo()">🧪 Carregar exemplo</button>'}${esg?`<button class="btn" onclick="reporEsgotados()">↺ Repor ${esg} esgotado(s)</button>`:''}</div>
   <p class="mut sm">Aqui fica o catálogo completo. <b>Pratos do dia</b> só aparecem para o cliente quando entram no <b>Cardápio do dia</b>; <b>fixos</b> aparecem sempre. A chave verde = disponível.</p>
-  ${nomes.map(c=>`<h3 class="sec">${esc(c)}</h3>${cats[c].sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome)).map(p=>`<div class="pr-row ${p.ativo===false?'inat':''}">${p.foto?`<img class="pthumb" src="${esc(p.foto)}" alt="" onclick="editarProd('${p.id}')">`:''}<div style="flex:1;min-width:0" onclick="editarProd('${p.id}')"><b>${esc(p.nome)}</b> ${ehDoDia(p)?'<span class="tag t-preparo">do dia</span>':'<span class="tag">fixo</span>'}${p.montavel?' <span class="tag t-saiu">monte</span>':''}${p.esgotado?' <span class="tag t-novo">Esgotado</span>':''}${p.ativo===false?' <span class="tag">Oculto</span>':''}<div class="mut sm">${precoTxt(p)}${ehDoDia(p)&&(p.dias||[]).length?' · habitual: '+diasTxt(p.dias):''}${(estoque[p.id]||{}).controla?` · 📦 ${fmtQ(estoque[p.id].qtd)}`:''}</div></div><label class="sw"><input type="checkbox" ${p.esgotado?'':'checked'} onchange="setEsg('${p.id}',!this.checked)"><span></span></label></div>`).join('')}`).join('')||'<p class="vazio">Nenhum produto ainda. Cadastre as marmitas, bebidas, sobremesas e adicionais.</p>'}`;
+  ${nomes.map(c=>`<h3 class="sec">${esc(c)}</h3>${cats[c].sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(b.nome)).map(p=>`<div class="pr-row ${p.ativo===false?'inat':''}">${p.foto?`<img class="pthumb" src="${esc(p.foto)}" alt="" onclick="editarProd('${p.id}')">`:''}<div style="flex:1;min-width:0" onclick="editarProd('${p.id}')"><b>${esc(p.nome)}</b> ${ehDoDia(p)?'<span class="tag t-preparo">do dia</span>':'<span class="tag">fixo</span>'}${p.montavel?' <span class="tag t-saiu">monte</span>':''}${p.esgotado?' <span class="tag t-novo">Esgotado</span>':''}${p.ativo===false?' <span class="tag">Oculto</span>':''}<div class="mut sm">${precoTxt(p)}${ehDoDia(p)&&(p.dias||[]).length?' · habitual: '+diasTxt(p.dias):''}${(estoque[p.id]||{}).controla?` · 📦 ${fmtQ(estoque[p.id].qtd)}`:''}</div></div><label class="sw"><input type="checkbox" ${p.esgotado?'':'checked'} onchange="setEsg('${p.id}',!this.checked)"><span></span></label></div>`).join('')}`).join('')||'<p class="vazio">Nenhum produto ainda. Cadastre as marmitas, bebidas e sobremesas, ou toque em 🧪 Carregar exemplo para testar.</p>'}`;
 }
 
 /* ===== Cardápio do dia ===== */
@@ -565,6 +565,36 @@ async function compartilharDiv(){
   try{if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],text:txt});else{copiarTxt(txt);toast('Este aparelho não compartilha imagem direto: baixe a imagem e cole o texto.')}}catch(e){}
 }
 
+/* ===== Exemplo para testes: pratos, cardápio de hoje, estoque e insumos ===== */
+async function carregarExemplo(){
+  if(produtos.length&&!confirm('Já existem produtos. Adicionar os de exemplo mesmo assim?'))return;
+  const L=lojaRef(),b=db.batch(),hj=hojeStr(),dow=dt(hj).getDay(),amanha=(dow+1)%7,ref=n=>L.collection(n).doc();
+  const P={};const add=(k,d)=>{const r=ref('produtos');P[k]=r.id;b.set(r,{ativo:true,esgotado:false,variacoes:[],adicionais:[],descricao:'',ordem:0,atualizadoMs:Date.now(),...d})};
+  add('feij',{nome:'Feijoada completa',descricao:'Feijoada, arroz, couve, farofa e laranja',categoria:'Marmitas',doDia:true,dias:[dow,3,6].filter((v,i,a)=>a.indexOf(v)===i),variacoes:[{nome:'P',preco:20},{nome:'G',preco:26}],adicionais:[{nome:'Torresmo',preco:4}],ordem:1});
+  add('parm',{nome:'Frango à parmegiana',descricao:'Arroz, fritas e salada',categoria:'Marmitas',doDia:true,dias:[dow,amanha],preco:24,ordem:2});
+  add('strog',{nome:'Strogonoff de carne',descricao:'Arroz, batata palha e salada',categoria:'Marmitas',doDia:true,dias:[amanha],preco:23,ordem:3});
+  add('monte',{nome:'Monte sua marmita',categoria:'Marmitas',doDia:false,montavel:true,variacoes:[{nome:'P',preco:18},{nome:'G',preco:22}],adicionais:[{nome:'Ovo frito',preco:3}],ordem:4,
+    grupos:[{nome:'Proteína',min:1,max:1,opcoes:[{nome:'Frango grelhado',extra:0},{nome:'Bife acebolado',extra:3},{nome:'Filé de tilápia',extra:4}]},
+            {nome:'Acompanhamentos',min:1,max:3,opcoes:['Arroz','Feijão','Farofa','Macarrão','Purê','Legumes'].map(n=>({nome:n,extra:0}))},
+            {nome:'Salada',min:0,max:1,opcoes:[{nome:'Salada verde',extra:0}]}]});
+  add('coca',{nome:'Coca-Cola lata',categoria:'Bebidas',doDia:false,preco:6});
+  add('suco',{nome:'Suco natural 500 ml',descricao:'Laranja ou limão',categoria:'Bebidas',doDia:false,preco:8});
+  add('pudim',{nome:'Pudim de leite',categoria:'Sobremesas',doDia:false,preco:7});
+  const I={};const ins=(k,d)=>{const r=ref('insumos');I[k]=r.id;b.set(r,{...d,atualizadoMs:Date.now()})};
+  ins('arroz',{nome:'Arroz',unidade:'kg',qtd:12,minimo:5,custo:5.8});
+  ins('feijao',{nome:'Feijão preto',unidade:'kg',qtd:6,minimo:3,custo:8.9});
+  ins('frango',{nome:'Peito de frango',unidade:'kg',qtd:8,minimo:3,custo:18.9});
+  ins('marmitex',{nome:'Marmitex nº 8',unidade:'un',qtd:140,minimo:50,custo:.45});
+  const E=(k,d)=>b.set(L.collection('estoque').doc(P[k]),{atualizadoMs:Date.now(),...d});
+  E('feij',{controla:false,custo:0,custoVar:{P:7.8,G:10.2},ficha:[{id:I.feijao,qtd:.12},{id:I.arroz,qtd:.15},{id:I.marmitex,qtd:1}]});
+  E('parm',{controla:false,custo:0,ficha:[{id:I.frango,qtd:.18},{id:I.arroz,qtd:.15},{id:I.marmitex,qtd:1}]});
+  E('strog',{controla:false,custo:8.6});
+  E('monte',{controla:false,custoVar:{P:6.5,G:8},ficha:[{id:I.marmitex,qtd:1}]});
+  E('coca',{controla:true,qtd:24,minimo:6,custo:3.2});E('suco',{controla:false,custo:2.5});E('pudim',{controla:true,qtd:10,minimo:3,custo:2.8});
+  b.set(L.collection('cardapios').doc(hj),{data:hj,publicado:true,itens:[P.feij,P.parm],qtd:{[P.feij]:30,[P.parm]:20},ops:{},aviso:'Hoje tem feijoada completa! 🍲',estoqueAplicado:false,atualizadoMs:Date.now(),por:user.email});
+  b.update(L,{avisoDia:'Hoje tem feijoada completa! 🍲'});
+  try{await b.commit();cdEd=null;toast('Exemplo carregado: 7 produtos, cardápio de hoje e estoque ✅');setTimeout(()=>{cdAba='dia';renderCardapio()},400)}catch(e){toast('Erro: '+e.message)}
+}
 /* ===== Cadastro de produto ===== */
 async function salvarAviso(){try{await lojaRef().update({avisoDia:$('#avisoDia').value.trim()});toast('Aviso salvo')}catch(e){toast('Erro: '+e.message)}}
 async function setEsg(id,v){try{await lojaRef().collection('produtos').doc(id).update({esgotado:v,esgotadoAuto:false});toast(v?'Marcado como esgotado':'Disponível de novo')}catch(e){toast('Erro: '+e.message)}}
