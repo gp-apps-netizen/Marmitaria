@@ -7,6 +7,8 @@ window.temaAtual=function(){try{return localStorage.getItem('gpx_tema')||'auto'}
 window.definirTema=function(t){try{localStorage.setItem('gpx_tema',t)}catch(e){}ap();if(window.aoMudarTema)window.aoMudarTema()};
 ap();try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',ap)}catch(e){}})();</script>
 
+
+
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#d9480f">
 <title>Painel da Marmitaria</title>
@@ -113,6 +115,10 @@ td.r,th.r{text-align:right}
 
 
 
+
+
+
+
 /* ===== TEMA ESCURO (gerado) ===== */
 :root{--card2:#f1f3f5}
 html[data-tema="escuro"]{--bg:#141210;--card:#1f1b18;--card2:#2a2420;--tx:#f1ebe5;--mut:#a89c90;--bd:#3a322c;--ok:#51cf66;--al:#ff6b6b;color-scheme:dark}
@@ -138,6 +144,23 @@ html[data-tema="escuro"] .tlogo{background:var(--card)}
 html[data-tema="escuro"] .fotoprev{background:var(--card2)}
 html[data-tema="escuro"] .logoprev{background:var(--card)}
 html[data-tema="escuro"] .x{background:var(--card2)}
+html[data-tema="escuro"] .top{background:var(--pri);color:#fff}
+html[data-tema="escuro"] .top .mut{color:rgba(255,255,255,.85)}
+html[data-tema="escuro"] .bn button{color:var(--mut)}
+html[data-tema="escuro"] .bn button.on{color:var(--pri)}
+html[data-tema="escuro"] .bn .bdg{background:var(--al);color:#fff}
+html[data-tema="escuro"] .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+html[data-tema="escuro"] .ib{background:rgba(0,0,0,.06)}
+html[data-tema="escuro"] .top .ib{background:rgba(255,255,255,.2);color:#fff}
+html[data-tema="escuro"] .lnk{color:var(--pri)}
+html[data-tema="escuro"] .mut{color:var(--mut)}
+html[data-tema="escuro"] .vazio{color:var(--mut)}
+html[data-tema="escuro"] .chip.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+html[data-tema="escuro"] .chip b{background:var(--pri);color:#fff}
+html[data-tema="escuro"] .sw span{background:#adb5bd}
+html[data-tema="escuro"] .sw input:checked+span{background:var(--ok)}
+html[data-tema="escuro"] #modal{background:rgba(0,0,0,.45)}
+html[data-tema="escuro"] #toast{background:#212529;color:#fff}
 html[data-tema="escuro"] [style*="background:#fff;"],html[data-tema="escuro"] [style$="background:#fff"]{background:var(--card)!important}
 html[data-tema="escuro"] [style*="background:#ffffff;"],html[data-tema="escuro"] [style$="background:#ffffff"]{background:var(--card)!important}
 html[data-tema="escuro"] [style*="background:#faf8f6"]{background:var(--card2)!important}
@@ -955,7 +978,7 @@ async function renderEstoque(){
 }
 function editarEstoque(pid){
   const p=produtos.find(x=>x.id===pid),e=estoque[pid]||{},vars=p.variacoes||[],ads=p.adicionais||[];
-  ee={pid,ficha:JSON.parse(JSON.stringify(e.ficha||[]))};
+  ee={pid,ficha:JSON.parse(JSON.stringify(e.ficha||[]))};calc=null;
   modal(`<h2>📦 ${esc(p.nome)}</h2>
   <label class="ck"><input type="checkbox" id="eCtrl" ${e.controla?'checked':''} onchange="$('#eQtdBox').style.display=this.checked?'':'none'"> Controlar quantidade em estoque</label>
   <div id="eQtdBox" class="sub" style="display:${e.controla?'':'none'}"><p class="mut sm">Bom para bebidas, sobremesas e para a produção do dia das marmitas. Ao zerar, o item fica <b>Esgotado</b> sozinho.</p>
@@ -965,11 +988,40 @@ function editarEstoque(pid){
   ${vars.length?`<label>Custo por tamanho <span class="mut sm">(vazio = usa o custo acima)</span></label>${vars.map(v=>`<div class="row2"><span style="flex:2">${esc(v.nome)} <span class="mut sm">venda ${brl(v.preco)}</span></span><input class="eCV" data-n="${esc(v.nome)}" inputmode="decimal" style="flex:1" value="${fmtNum((e.custoVar||{})[v.nome])}" placeholder="R$"></div>`).join('')}`:''}
   ${ads.length?`<label>Custo dos adicionais</label>${ads.map(a=>`<div class="row2"><span style="flex:2">${esc(a.nome)} <span class="mut sm">venda ${brl(a.preco)}</span></span><input class="eCA" data-n="${esc(a.nome)}" inputmode="decimal" style="flex:1" value="${fmtNum((e.custoAd||{})[a.nome])}" placeholder="R$"></div>`).join('')}`:''}
   <h4 style="margin-top:14px">🧾 Ficha técnica <span class="mut sm">(opcional)</span></h4>
-  <p class="mut sm">Quanto de cada insumo vai em 1 unidade. Ex.: 0,15 kg de arroz + 1 marmitex. Os insumos baixam a cada venda e o custo é calculado sozinho.</p>
-  <div id="eFicha"></div>${insumos.length?`<button class="lnk" onclick="ee.ficha.push({id:insumos[0].id,qtd:''});fichaRender()">+ adicionar insumo</button>`:'<p class="mut sm">Cadastre insumos na aba <b>Insumos</b> para usar a ficha técnica.</p>'}
+  <p class="mut sm">Quanto de cada insumo vai em 1 unidade. Ex.: 0,15 kg de arroz + 1 marmitex. Os insumos baixam a cada venda e o custo é calculado sozinho. Não sabe a quantidade? Use <b>🧮 Calcular pela produção</b>.</p>
+  <div id="eFicha"></div>${insumos.length?`<div class="row" style="gap:14px;margin:4px 0"><button class="lnk" onclick="ee.ficha.push({id:insumos[0].id,qtd:''});fichaRender()">+ adicionar insumo</button><button class="lnk" onclick="calcAbrir()">🧮 Calcular pela produção</button></div><div id="eCalc"></div>`:'<p class="mut sm">Cadastre insumos na aba <b>Insumos</b> para usar a ficha técnica.</p>'}
   <div id="eResumo" class="card" style="margin-top:10px;background:#faf8f6"></div>
   <div class="row"><button class="btn pri" style="flex:1" onclick="salvarEstoque()">Salvar</button>${e.controla?`<button class="btn" onclick="entradaProd('${pid}')">📥 Entrada</button>`:''}</div>`);
   fichaRender();
+}
+// ---------- Calculadora de rendimento ----------
+let calc=null;
+
+function calcAbrir(){calc={l:ee.ficha.length?ee.ficha.map(f=>({id:f.id,usado:''})):[{id:insumos[0].id,usado:''}]};calcRender();setTimeout(()=>{const i=$('#cRend');if(i){i.focus();i.scrollIntoView({block:'center',behavior:'smooth'})}},50)}
+function calcRender(){
+  const box=$('#eCalc');if(!box)return;if(!calc){box.innerHTML='';return}
+  const rendV=($('#cRend')||{}).value||'';
+  box.innerHTML=`<div class="card" style="margin:6px 0 10px;border:2px solid var(--pri)">
+  <b>🧮 Calcular pela produção</b>
+  <p class="mut sm" style="margin:4px 0 8px">Informe quanto usou numa produção e quantas unidades rendeu. O app divide e preenche a ficha. Use o peso <b>cru</b>, do jeito que você compra. Deixe em branco o que vai 1 por unidade (ex.: marmitex).</p>
+  <label>Quantas unidades rendeu?</label><input id="cRend" inputmode="decimal" placeholder="Ex.: 40 marmitas" value="${esc(rendV)}" oninput="calcPrev()">
+  <label style="margin-top:8px">Quanto usou de cada insumo</label>
+  ${calc.l.map((l,i)=>{const s=insumos.find(x=>x.id===l.id)||{};return `<div class="row2"><select style="flex:2" onchange="calc.l[${i}].id=this.value;calcRender()">${insumos.map(x=>`<option value="${x.id}" ${x.id===l.id?'selected':''}>${esc(x.nome)} (${esc(x.unidade||'un')})</option>`).join('')}</select><input style="flex:1" inputmode="decimal" placeholder="usou" value="${esc(l.usado)}" oninput="calc.l[${i}].usado=this.value;calcPrev()"><button class="ib" onclick="calc.l.splice(${i},1);calcRender()">✕</button></div><div class="mut sm" id="cPrev${i}" style="margin:-2px 0 6px;text-align:right"></div>`}).join('')}
+  <button class="lnk" onclick="calc.l.push({id:insumos[0].id,usado:''});calcRender()">+ outro insumo</button>
+  <div class="row" style="margin-top:8px"><button class="btn pri" style="flex:1" onclick="calcAplicar()">✅ Preencher a ficha</button><button class="btn" onclick="calc=null;calcRender()">Fechar</button></div></div>`;
+  calcPrev();
+}
+function calcPrev(){
+  if(!calc)return;const r=num(($('#cRend')||{}).value);
+  calc.l.forEach((l,i)=>{const el=$('#cPrev'+i);if(!el)return;const u=num(l.usado),s=insumos.find(x=>x.id===l.id)||{};
+    el.innerHTML=r>0&&u>0?`= <b>${(Math.round(u/r*1000)/1000).toLocaleString("pt-BR",{maximumFractionDigits:3})} ${esc(s.unidade||'un')}</b> por unidade${(+s.custo||0)>0?` · ${brl(u/r*(+s.custo||0))}`:''}`:''});
+}
+function calcAplicar(){
+  const r=num(($('#cRend')||{}).value);if(!(r>0)){alert('Informe quantas unidades rendeu.');return}
+  let n=0;
+  calc.l.forEach(l=>{const u=num(l.usado);if(!l.id||!(u>0))return;const q=Math.round(u/r*1000)/1000;const f=ee.ficha.find(x=>x.id===l.id);if(f)f.qtd=q;else ee.ficha.push({id:l.id,qtd:q});n++});
+  if(!n){alert('Informe quanto usou de pelo menos um insumo.');return}
+  calc=null;calcRender();fichaRender();toast(`Ficha preenchida (${n} insumo${n>1?'s':''}). Confira e toque em Salvar.`);
 }
 function fichaRender(){
   $('#eFicha').innerHTML=ee.ficha.map((l,i)=>`<div class="row2"><select style="flex:2" onchange="ee.ficha[${i}].id=this.value;fichaResumo()">${insumos.map(s=>`<option value="${s.id}" ${s.id===l.id?'selected':''}>${esc(s.nome)} (${esc(s.unidade||'un')})</option>`).join('')}</select><input style="flex:1" inputmode="decimal" placeholder="qtd" value="${esc(String(l.qtd??'').replace('.',','))}" oninput="ee.ficha[${i}].qtd=this.value;fichaResumo()"><button class="ib" onclick="ee.ficha.splice(${i},1);fichaRender()">✕</button></div>`).join('');
