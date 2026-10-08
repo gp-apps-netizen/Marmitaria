@@ -2,6 +2,11 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<script id="telaJS">(function(){function ap(){var t='auto';try{t=localStorage.getItem('gpx_tela')||'auto'}catch(e){}var pc=t==='pc'||(t==='auto'&&window.innerWidth>=1000);document.documentElement.setAttribute('data-tela',pc?'pc':'cel');var b=document.getElementById('btnTela');if(b)b.textContent=pc?'📱':'🖥️'}
+window.telaAtual=function(){try{return localStorage.getItem('gpx_tela')||'auto'}catch(e){return 'auto'}};
+window.definirTela=function(t){try{localStorage.setItem('gpx_tela',t)}catch(e){}ap();if(window.aoMudarTema)window.aoMudarTema()};
+window.trocarTela=function(){definirTela(document.documentElement.getAttribute('data-tela')==='pc'?'cel':'pc');if(window.toast)toast(document.documentElement.getAttribute('data-tela')==='pc'?'🖥️ Tela de computador':'📱 Tela de celular')};
+window.aplicarTela=ap;ap();window.addEventListener('resize',ap);document.addEventListener('DOMContentLoaded',ap)})();</script>
 <script id="temaJS">(function(){function ap(){var t='auto';try{t=localStorage.getItem('gpx_tema')||'auto'}catch(e){}var d=t==='escuro'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-tema',d?'escuro':'claro')}
 window.temaAtual=function(){try{return localStorage.getItem('gpx_tema')||'auto'}catch(e){return 'auto'}};
 window.definirTema=function(t){try{localStorage.setItem('gpx_tema',t)}catch(e){}ap();if(window.aoMudarTema)window.aoMudarTema()};
@@ -119,6 +124,26 @@ td.r,th.r{text-align:right}
 
 
 
+
+/* ===== Tela de computador ===== */
+html[data-tela="pc"] body{font-size:15.5px}
+html[data-tela="pc"] .top{padding:12px 24px}
+html[data-tela="pc"] .bn{top:0;bottom:0;right:auto;width:210px;flex-direction:column;justify-content:flex-start;gap:4px;padding:78px 10px 16px;border-top:0;border-right:1px solid var(--bd);z-index:9}
+html[data-tela="pc"] .bn button{flex:0 0 auto;display:flex;align-items:center;gap:12px;text-align:left;font-size:15px;padding:12px 14px;border-radius:12px}
+html[data-tela="pc"] .bn button i{display:inline;font-size:20px}
+html[data-tela="pc"] .bn button.on{background:color-mix(in srgb,var(--pri) 12%,transparent)}
+html[data-tela="pc"] .bn .bdg{position:static;margin-left:auto}
+html[data-tela="pc"] main{max-width:1500px;margin:0 0 0 210px;padding:20px 28px 40px}
+html[data-tela="pc"] .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px;align-items:start}
+html[data-tela="pc"] .plist .pc{margin:0}
+html[data-tela="pc"] .stats{grid-template-columns:repeat(4,1fr)}
+html[data-tela="pc"] #t-ajustes{column-count:2;column-gap:16px}
+html[data-tela="pc"] #t-ajustes>*{break-inside:avoid}
+html[data-tela="pc"] #t-ajustes .btn.big{column-span:all}
+html[data-tela="pc"] #t-cardapio .pr-row,html[data-tela="pc"] #t-estoque .pr-row{max-width:900px}
+html[data-tela="pc"] #cdBox{max-width:900px}
+html[data-tela="pc"] #modal{align-items:center}
+html[data-tela="pc"] .sheet{border-radius:18px;max-height:88vh;max-width:640px}
 /* ===== TEMA ESCURO (gerado) ===== */
 :root{--card2:#f1f3f5}
 html[data-tema="escuro"]{--bg:#141210;--card:#1f1b18;--card2:#2a2420;--tx:#f1ebe5;--mut:#a89c90;--bd:#3a322c;--ok:#51cf66;--al:#ff6b6b;color-scheme:dark}
@@ -223,6 +248,7 @@ html[data-tema="escuro"] [style*="color:#868e96"]:not([style*="background-color:
   <header class="top">
     <div style="min-width:0;display:flex;align-items:center;gap:10px"><img id="tLogo" class="tlogo" alt=""><div style="min-width:0"><div class="tn" id="tNome">Marmitaria</div><div class="mut sm" id="tSub"></div></div></div>
     <div class="tr">
+      <button class="ib" id="btnTela" onclick="trocarTela()" title="Tela de celular ou computador">🖥️</button>
       <button class="ib" id="btnSom" onclick="toggleSom()" title="Som de novos pedidos">🔕</button>
       <label class="sw" title="Aberto para pedidos"><input type="checkbox" id="swAberto" onchange="setAberto(this.checked)"><span></span></label>
       <span id="lblAberto">Fechado</span>
@@ -412,7 +438,7 @@ function renderPedidos(){
   ${!somOn?'<div class="card" style="background:#fff9db;border-color:#ffe066" onclick="toggleSom()"><b>🔔 Toque aqui para ligar o som de novos pedidos</b></div>':''}
   <div class="bar1"><input type="date" value="${diaPedidos}" onchange="diaPedidos=this.value;ouvirPedidos()"><div class="mut sm" style="text-align:right">${pedidos.length} pedido(s)<br><b>${brl(fat)}</b></div></div>
   <div class="chips">${[['ativos','Em aberto'],['rua','🛵 Entregadores'],...(diaPedidos===hojeStr()?[['enc','📅 Encomendas']]:[]),['novo','Novos'],['preparo','Preparo'],['saiu','Saiu/Pronto'],['entregue','Entregues'],['cancelado','Cancelados'],['todos','Todos']].map(([k,l])=>`<button class="chip ${filtro===k?'on':''}" onclick="filtro='${k}';renderPedidos()">${l}${k!=='todos'&&cont[k]?` <b>${cont[k]}</b>`:''}</button>`).join('')}</div>
-  ${filtro==='rua'?'<div id="naRua"></div>':''}${filtro==='rua'?'':filtro==='enc'?'<p class="mut sm" style="margin-bottom:8px">Encomendas para os próximos dias. O estoque delas baixa quando a produção do dia for lançada (ao publicar o cardápio daquele dia com as quantidades).</p>':''}${filtro==='rua'?'':lista.length?lista.map(cardPedido).join(''):'<p class="vazio">'+(filtro==='enc'?'Nenhuma encomenda para os próximos dias.':'Nenhum pedido aqui.')+'</p>'}`;
+  ${filtro==='rua'?'<div id="naRua"></div>':''}${filtro==='rua'?'':filtro==='enc'?'<p class="mut sm" style="margin-bottom:8px">Encomendas para os próximos dias. O estoque delas baixa quando a produção do dia for lançada (ao publicar o cardápio daquele dia com as quantidades).</p>':''}${filtro==='rua'?'':lista.length?'<div class="plist">'+lista.map(cardPedido).join('')+'</div>':'<p class="vazio">'+(filtro==='enc'?'Nenhuma encomenda para os próximos dias.':'Nenhum pedido aqui.')+'</p>'}`;
   if(filtro==='rua')renderNaRua($('#naRua'));
 }
 function cardPedido(p){
@@ -1207,7 +1233,8 @@ function renderAjustes(){
    <label>Função</label><select id="eqPapel"><option value="func">Funcionário</option><option value="entregador">🛵 Entregador</option></select>
    <button class="btn" onclick="addFunc()">+ Adicionar à equipe</button>
    <div class="sub" style="margin-top:10px"><b class="sm">App do entregador</b><input readonly value="${esc(baseApp()+'entrega/')}" onclick="this.select()"><div class="row"><button class="btn" onclick="copiarTxt(baseApp()+'entrega/')">Copiar link</button><a class="btn" target="_blank" href="https://wa.me/?text=${encodeURIComponent('App de entregas da '+L.nome+': '+baseApp()+'entrega/ (entre com o e-mail e a senha que te passei e instale pelo Chrome)')}">Enviar no WhatsApp</a></div></div></div>`:'<div class="card mut">Somente o responsável pela marmitaria altera os ajustes.</div>'}
-  <div class="card"><h4>🌙 Aparência deste aparelho</h4><div class="tema3">${[['auto','📱 Automático'],['claro','☀️ Claro'],['escuro','🌙 Escuro']].map(([k,l])=>`<button type="button" class="${temaAtual()===k?'on':''}" onclick="definirTema('${k}')">${l}</button>`).join('')}</div><p class="mut sm" style="margin-top:6px">Automático segue o modo do celular. Vale só neste aparelho.</p></div>
+  <div class="card"><h4>🌙 Aparência deste aparelho</h4><div class="tema3">${[['auto','📱 Automático'],['claro','☀️ Claro'],['escuro','🌙 Escuro']].map(([k,l])=>`<button type="button" class="${temaAtual()===k?'on':''}" onclick="definirTema('${k}')">${l}</button>`).join('')}</div><p class="mut sm" style="margin-top:6px">Automático segue o modo do celular. Vale só neste aparelho.</p>
+  <label style="margin-top:12px">🖥️ Tela</label><div class="tema3">${[['auto','🔄 Automático'],['cel','📱 Celular'],['pc','🖥️ Computador']].map(([k,l])=>`<button type="button" class="${telaAtual()===k?'on':''}" onclick="definirTela('${k}')">${l}</button>`).join('')}</div><p class="mut sm" style="margin-top:6px">Computador: menu na lateral e pedidos lado a lado. Automático escolhe pelo tamanho da tela. Também dá para trocar no botão 🖥️ do topo.</p></div>
   <div class="card"><h4>👤 Minha conta</h4><p class="mut sm">${esc(user.email)}</p><div class="row"><button class="btn" onclick="auth.sendPasswordResetEmail(user.email).then(()=>toast('Link para trocar a senha enviado ao seu e-mail'))">Trocar senha</button><button class="btn danger" onclick="sair()">Sair</button></div></div>`;
   new QRCode($('#qrLink'),{text:link,width:190,height:190});
   if(dono){carregarEquipe();lojaRef().collection('privado').doc('mp').get().then(s=>{mpTemToken=s.exists&&!!s.data().accessToken;if(mpTemToken&&$('#aMPTok')){$('#aMPTok').placeholder='•••••• já cadastrado (vazio = manter)';}}).catch(()=>{})}
