@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<script id="fundoJS">window.aplicarFundo=function(L,cli){var f=(L&&L.fundo)||{},src=f.usar==='logo'?(L&&L.logo):f.usar==='img'?f.img:'';if(cli&&f.cliente===false)src='';var el=document.getElementById('marcaFundo');var R=document.documentElement;if(!src){if(el)el.style.display='none';R.removeAttribute('data-marca');return}R.setAttribute('data-marca','1');if(!document.getElementById('marcaCSS')){var st=document.createElement('style');st.id='marcaCSS';st.textContent='html[data-marca] :is(.card,.prod,.pc,.pr-row,.stat,.ent,.its){background-color:color-mix(in srgb,var(--card) 84%,transparent)!important}html[data-marca] .chips{background:transparent!important}';document.head.appendChild(st)}if(!el){el=document.createElement('div');el.id='marcaFundo';el.setAttribute('aria-hidden','true');el.style.cssText='position:fixed;inset:0;z-index:-1;pointer-events:none;background-repeat:no-repeat;background-position:center';document.body.appendChild(el)}var t=f.tam||'medio';el.style.backgroundImage='url("'+src+'")';el.style.backgroundSize=t==='cheio'?'cover':t==='pequeno'?'38vmin':'65vmin';el.style.opacity=Math.min(.6,Math.max(.03,+f.opac||.12));el.style.display=''};</script>
 <script id="temaJS">(function(){function ap(){var t='auto';try{t=localStorage.getItem('gpx_tema')||'auto'}catch(e){}var d=t==='escuro'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-tema',d?'escuro':'claro')}
 window.temaAtual=function(){try{return localStorage.getItem('gpx_tema')||'auto'}catch(e){return 'auto'}};
 window.definirTema=function(t){try{localStorage.setItem('gpx_tema',t)}catch(e){}ap();if(window.aoMudarTema)window.aoMudarTema()};
@@ -210,7 +211,7 @@ auth.onAuthStateChanged(async u=>{
   lojaId=perfil.marmitaId;
   $('#login').style.display='none';$('#carregando').style.display='none';$('#app').style.display='';
   const ref=db.collection('marmitarias').doc(lojaId),col=ref.collection('pedidos');
-  unsubs.push(ref.onSnapshot(d=>{loja=d.data()||{};$('#tNome').textContent=loja.nome||'Entregas';if(loja.cor){document.documentElement.style.setProperty('--pri',loja.cor);document.querySelector('meta[name=theme-color]').content=loja.cor}render()}));
+  unsubs.push(ref.onSnapshot(d=>{loja=d.data()||{};aplicarFundo(loja,true);$('#tNome').textContent=loja.nome||'Entregas';if(loja.cor){document.documentElement.style.setProperty('--pri',loja.cor);document.querySelector('meta[name=theme-color]').content=loja.cor}render()}));
   let first=true;
   unsubs.push(col.where('entregador.email','==',email).where('entregaAberta','==',true).onSnapshot(q=>{
     if(!first&&q.docChanges().some(c=>c.type==='added')){if(navigator.vibrate)navigator.vibrate([300,120,300]);beep();toast('🛵 Nova entrega para você')}
