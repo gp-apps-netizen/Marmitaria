@@ -7,6 +7,7 @@ window.telaAtual=function(){try{return localStorage.getItem('gpx_tela')||'auto'}
 window.definirTela=function(t){try{localStorage.setItem('gpx_tela',t)}catch(e){}ap();if(window.aoMudarTema)window.aoMudarTema()};
 window.trocarTela=function(){definirTela(document.documentElement.getAttribute('data-tela')==='pc'?'cel':'pc');if(window.toast)toast(document.documentElement.getAttribute('data-tela')==='pc'?'🖥️ Tela de computador':'📱 Tela de celular')};
 window.aplicarTela=ap;ap();window.addEventListener('resize',ap);document.addEventListener('DOMContentLoaded',ap)})();</script>
+<script id="fundoJS">window.aplicarFundo=function(L,cli){var f=(L&&L.fundo)||{},src=f.usar==='logo'?(L&&L.logo):f.usar==='img'?f.img:'';if(cli&&f.cliente===false)src='';var el=document.getElementById('marcaFundo');var R=document.documentElement;if(!src){if(el)el.style.display='none';R.removeAttribute('data-marca');return}R.setAttribute('data-marca','1');if(!document.getElementById('marcaCSS')){var st=document.createElement('style');st.id='marcaCSS';st.textContent='html[data-marca] :is(.card,.prod,.pc,.pr-row,.stat,.ent,.its){background-color:color-mix(in srgb,var(--card) 84%,transparent)!important}html[data-marca] .chips{background:transparent!important}';document.head.appendChild(st)}if(!el){el=document.createElement('div');el.id='marcaFundo';el.setAttribute('aria-hidden','true');el.style.cssText='position:fixed;inset:0;z-index:-1;pointer-events:none;background-repeat:no-repeat;background-position:center';document.body.appendChild(el)}var t=f.tam||'medio';el.style.backgroundImage='url("'+src+'")';el.style.backgroundSize=t==='cheio'?'cover':t==='pequeno'?'38vmin':'65vmin';el.style.opacity=Math.min(.6,Math.max(.03,+f.opac||.12));el.style.display=''};</script>
 <script id="temaJS">(function(){function ap(){var t='auto';try{t=localStorage.getItem('gpx_tema')||'auto'}catch(e){}var d=t==='escuro'||(t==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.setAttribute('data-tema',d?'escuro':'claro')}
 window.temaAtual=function(){try{return localStorage.getItem('gpx_tema')||'auto'}catch(e){return 'auto'}};
 window.definirTema=function(t){try{localStorage.setItem('gpx_tema',t)}catch(e){}ap();if(window.aoMudarTema)window.aoMudarTema()};
@@ -359,7 +360,7 @@ function abrirLoja(id){
   diaPedidos=hojeStr();ouvirPedidos();irTab('pedidos');
 }
 function renderTopo(){
-  aplicarCor(loja&&loja.cor);
+  aplicarCor(loja&&loja.cor);aplicarFundo(loja);
   $('#tNome').textContent=loja?loja.nome:'Administração';
   const lg=$('#tLogo');if(loja&&loja.logo){lg.src=loja.logo;lg.style.display='block'}else{lg.removeAttribute('src');lg.style.display='none'}
   $('#tSub').textContent=(isSuper?'Administrador (suporte)':isDono()?'Responsável':'Funcionário')+(loja&&loja.status!=='ativo'?' · SUSPENSA':'');
@@ -921,6 +922,24 @@ async function fotoProduto(inp){const f=inp.files&&inp.files[0];if(!f)return;try
 async function enviarLogo(inp){const f=inp.files&&inp.files[0];if(!f)return;try{toast('Enviando logo…');const d=await reduzirImagem(f,320,'logo');await lojaRef().update({logo:d});$('#aLogoPrev').innerHTML=`<img src="${d}" alt="">`;toast('Logo salvo ✅')}catch(e){toast('Erro: '+e.message)}inp.value=''}
 async function removerLogo(){if(!confirm('Remover o logo?'))return;try{await lojaRef().update({logo:''});$('#aLogoPrev').innerHTML='🍱';toast('Logo removido')}catch(e){toast('Erro: '+e.message)}}
 
+
+// ---------- Marca d'água ----------
+let fundoT=null;
+function fundoCfg(){return {usar:'',opac:.12,tam:'medio',cliente:true,...((loja&&loja.fundo)||{})}}
+function fundoBox(){const f=fundoCfg();const b=(k,l,cur,fn)=>`<button type="button" class="${cur===k?'on':''}" onclick="${fn}('${k}')">${l}</button>`;
+  return `<div class="tema3">${b('','Nenhuma',f.usar,'fundoSet')}${b('logo','🖼️ Usar o logo',f.usar,'fundoSet')}${b('img','📷 Outra imagem',f.usar,'fundoSet')}</div>
+  ${f.usar==='logo'&&!(loja&&loja.logo)?'<p class="mut sm" style="color:var(--al)">Envie o logo acima primeiro.</p>':''}
+  ${f.usar==='img'?`<div class="row2" style="margin-top:8px">${f.img?`<img src="${esc(f.img)}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px;border:1px solid var(--bd)">`:''}<label class="btn" style="margin:0;flex:1">📷 ${f.img?'Trocar imagem':'Escolher imagem'}<input type="file" accept="image/*" style="display:none" onchange="fundoImg(this)"></label></div>`:''}
+  ${f.usar?`<label style="margin-top:10px">Intensidade <span class="mut sm" id="fundoPct">${Math.round(f.opac*100)}%</span></label><input type="range" min="3" max="45" value="${Math.round(f.opac*100)}" oninput="fundoOpac(this.value)" style="padding:0;border:0;accent-color:var(--pri)">
+  <label>Tamanho</label><div class="tema3">${b('pequeno','Pequena',f.tam,'fundoTam')}${b('medio','Média',f.tam,'fundoTam')}${b('cheio','Tela toda',f.tam,'fundoTam')}</div>
+  <label class="ck" style="margin-top:10px"><input type="checkbox" ${f.cliente!==false?'checked':''} onchange="fundoMuda({cliente:this.checked})"> Mostrar também no cardápio dos clientes e no app do entregador</label>`:''}
+  <p class="mut sm" style="margin-top:6px">A imagem fica bem clarinha atrás das telas, com as cores originais. Salva na hora.</p>`}
+function fundoMuda(m,redesenha){loja.fundo={...fundoCfg(),...m};aplicarFundo(loja);if(redesenha){const b=$('#fundoBox');if(b)b.innerHTML=fundoBox()}
+  clearTimeout(fundoT);fundoT=setTimeout(async()=>{try{await lojaRef().update({fundo:loja.fundo})}catch(e){toast('Erro: '+e.message)}},600)}
+function fundoSet(k){fundoMuda({usar:k},true)}
+function fundoTam(k){fundoMuda({tam:k},true)}
+function fundoOpac(v){const e=$('#fundoPct');if(e)e.textContent=v+'%';fundoMuda({opac:(+v)/100})}
+async function fundoImg(inp){const f=inp.files&&inp.files[0];if(!f)return;try{toast('Preparando imagem…');const d=await reduzirImagem(f,900,'logo');fundoMuda({img:d,usar:'img'},true);toast('Imagem de fundo salva ✅')}catch(e){toast('Erro: '+e.message)}inp.value=''}
 // ---------- Estoque e custos ----------
 // estoque/{produtoId}: {controla, qtd, minimo, custo, custoVar{tamanho:custo}, custoAd{adicional:custo}, ficha[{id,qtd}]}
 // insumos/{id}: {nome, unidade, qtd, minimo, custo}   movEstoque/{id}: histórico
@@ -1202,7 +1221,8 @@ function renderAjustes(){
    <label>Cidade</label><input id="aCid" value="${esc(L.cidade||'')}">
    <label>Horário de funcionamento</label><input id="aHor" value="${esc(L.horario||'')}" placeholder="Seg a Sáb, 10h30 às 14h">
    <label>🎨 Cor do cabeçalho e dos botões</label><div class="cores" id="aCores">${CORES.map(c=>`<button type="button" style="background:${c}" class="${(L.cor||'#d9480f').toLowerCase()===c?'on':''}" onclick="escolherCor('${c}')" aria-label="${c}"></button>`).join('')}</div><div class="row2"><span class="mut sm" style="flex:1">Outra cor:</span><input id="aCor" type="color" value="${esc(L.cor||'#d9480f')}" style="flex:1;margin:0" oninput="escolherCor(this.value,true)"></div><p class="mut sm">Vale para o painel, o cardápio dos clientes, o app do entregador e a imagem de divulgação. Toque em Salvar ajustes para gravar.</p>
-   <label>Logo</label><div class="fotobox"><div class="logoprev" id="aLogoPrev">${L.logo?`<img src="${esc(L.logo)}" alt="">`:'🍱'}</div><div style="flex:1"><label class="btn" style="margin:0 0 6px;display:flex">🖼️ Enviar logo<input type="file" accept="image/*" style="display:none" onchange="enviarLogo(this)"></label><button class="lnk" onclick="removerLogo()">Remover logo</button><p class="mut sm">Aparece no topo do cardápio e vira o ícone do app no celular dos clientes. Salva na hora.</p></div></div></div>
+   <label>Logo</label><div class="fotobox"><div class="logoprev" id="aLogoPrev">${L.logo?`<img src="${esc(L.logo)}" alt="">`:'🍱'}</div><div style="flex:1"><label class="btn" style="margin:0 0 6px;display:flex">🖼️ Enviar logo<input type="file" accept="image/*" style="display:none" onchange="enviarLogo(this)"></label><button class="lnk" onclick="removerLogo()">Remover logo</button><p class="mut sm">Aparece no topo do cardápio e vira o ícone do app no celular dos clientes. Salva na hora.</p></div></div>
+   <label style="margin-top:12px">💧 Marca d'água no fundo da tela</label><div id="fundoBox">${fundoBox()}</div></div>
   <div class="card"><h4>🛵 Entrega e retirada</h4>
    <label class="ck"><input type="checkbox" id="aFaz" ${L.fazEntrega!==false?'checked':''}> Faz entrega</label>
    <label class="ck"><input type="checkbox" id="aRet" ${L.aceitaRetirada?'checked':''}> Aceita retirada no local</label>
